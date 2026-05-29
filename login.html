@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-HK">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>登入 — CMHK VIP 賽馬智能分析</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: { extend: { colors: {
+      "secondary":"#3fe397","secondary-container":"#00c77e","surface-container-low":"#1f1b11",
+      "on-secondary":"#003920","inverse-primary":"#715d00","on-secondary-container":"#004c2d",
+      "primary-container":"#fcd535","primary":"#fff4d7","on-primary-fixed":"#221b00",
+      "surface":"#16130a","outline":"#999079","on-primary":"#3b2f00","trading-down":"#f6465d",
+      "inverse-surface":"#eae2d1","surface-elevated-dark":"#2b3139","surface-card-dark":"#1e2329",
+      "muted":"#707a8a","surface-container-lowest":"#110e06","on-error-container":"#ffdad6",
+      "on-surface":"#eae2d1","primary-active":"#f0b90b","inverse-on-surface":"#343025",
+      "on-error":"#690005","hairline-light":"#eaecef","on-surface-variant":"#d0c6ad",
+      "canvas-light":"#ffffff","surface-container":"#231f15","surface-tint":"#e9c320",
+      "tertiary-container":"#21eeff","hairline-dark":"#2b3139","tertiary":"#d9fbff",
+      "background":"#16130a","trading-up":"#0ecb81","canvas-dark":"#0b0e11",
+      "surface-dim":"#16130a","on-primary-container":"#705c00","on-primary-fixed-variant":"#554500",
+      "on-tertiary":"#00363b","outline-variant":"#4d4633","surface-variant":"#383429",
+      "error-container":"#93000a","surface-container-high":"#2d2a1f","primary-fixed":"#ffe176",
+      "surface-container-highest":"#383429","error":"#ffb4ab","primary-disabled":"#3a3a1f",
+      "on-background":"#eae2d1","surface-bright":"#3d392d","info":"#3b82f6","ink":"#181a20",
+      "muted-strong":"#929aa5","secondary":"#3fe397",
+    }, borderRadius: { DEFAULT:"0.125rem", lg:"0.25rem", xl:"0.5rem", full:"0.75rem" },
+    spacing: { xs:"8px", xl:"32px", lg:"24px", sm:"12px", xxs:"4px", md:"16px", section:"80px", xxl:"48px" },
+    fontFamily: { "body-md":["Work Sans","sans-serif"], "number-md":["Inter","sans-serif"] },
+    fontSize: {
+      "title-md": ["20px",{ lineHeight:"1.35", fontWeight:"600" }],
+      "number-md": ["16px",{ lineHeight:"1.4", fontWeight:"500" }],
+      "body-md": ["14px",{ lineHeight:"1.5", fontWeight:"400" }],
+      "button": ["14px",{ lineHeight:"1", fontWeight:"600" }],
+    }
+    }}
+  };
+</script>
+</head>
+<body class="bg-canvas-dark text-on-surface font-body-md text-body-md min-h-screen flex items-center justify-center p-md">
+
+  <!-- Background glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-container/5 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="w-full max-w-sm relative z-10">
+
+    <!-- Branding -->
+    <div class="text-center mb-xl">
+      <div class="inline-flex items-center gap-sm mb-md">
+        <span class="text-primary-container text-3xl font-black tracking-tighter uppercase font-body-md">CMHK</span>
+        <div class="h-8 w-px bg-hairline-dark"></div>
+        <div class="text-left">
+          <div class="text-on-surface text-sm font-semibold leading-tight">VIP 賽馬智能分析</div>
+          <div class="text-muted text-[10px] leading-tight">Horse Racing Intelligence</div>
+        </div>
+      </div>
+      <p class="text-muted text-xs mt-xs">僅限授權人員使用 · Internal Use Only</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-lg">
+      <h2 class="text-[20px] font-semibold text-on-surface mb-lg flex items-center gap-sm">
+        <span class="material-symbols-outlined text-primary-container" style="font-variation-settings:'FILL' 1;">lock</span>
+        系統登入
+      </h2>
+
+      <div id="error-msg" class="hidden bg-trading-down/10 border border-trading-down/30 text-trading-down text-sm rounded px-md py-sm mb-md flex items-center gap-xs">
+        <span class="material-symbols-outlined text-[18px]">error</span>
+        用戶名或密碼錯誤，請重試。
+      </div>
+
+      <form id="login-form" class="flex flex-col gap-md">
+        <div class="flex flex-col gap-xs">
+          <label class="text-muted text-xs uppercase tracking-wider">用戶名 Username</label>
+          <input type="text" id="username" placeholder="admin 或 vip" autocomplete="username"
+                 class="bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-md py-[10px]
+                        focus:ring-1 focus:ring-primary-container focus:border-primary-container outline-none
+                        placeholder:text-muted transition-colors">
+        </div>
+        <div class="flex flex-col gap-xs">
+          <label class="text-muted text-xs uppercase tracking-wider">密碼 Password</label>
+          <div class="relative">
+            <input type="password" id="password" placeholder="••••••••••" autocomplete="current-password"
+                   class="w-full bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-md py-[10px] pr-10
+                          focus:ring-1 focus:ring-primary-container focus:border-primary-container outline-none
+                          placeholder:text-muted transition-colors">
+            <button type="button" id="toggle-pw" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-on-surface transition-colors">
+              <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 0;">visibility</span>
+            </button>
+          </div>
+        </div>
+        <button type="submit"
+                class="w-full bg-primary-container text-ink font-semibold text-sm py-[10px] rounded
+                       hover:bg-primary-active transition-colors mt-xs active:scale-95">
+          登入系統
+        </button>
+      </form>
+    </div>
+
+    <!-- Demo hint (remove in production) -->
+    <div class="mt-md bg-surface-container border border-hairline-dark rounded p-sm">
+      <p class="text-muted text-[11px] leading-relaxed">
+        <span class="text-primary-container font-semibold">Demo 帳號：</span><br>
+        管理員：admin / cmhkvip2026<br>
+        操作員：vip / vip888
+      </p>
+    </div>
+
+    <p class="text-center text-muted text-[10px] mt-lg">
+      本系統純供資訊參考，不涉及博彩下注。<br>
+      CMHK VIP Room · Race Intelligence v1.0
+    </p>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (isAuthenticated()) window.location.href = 'index.html';
+
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      if (login(u, p)) {
+        window.location.href = 'index.html';
+      } else {
+        document.getElementById('error-msg').classList.remove('hidden');
+        document.getElementById('password').value = '';
+      }
+    });
+
+    document.getElementById('toggle-pw').addEventListener('click', function() {
+      const pw  = document.getElementById('password');
+      const ico = this.querySelector('.material-symbols-outlined');
+      if (pw.type === 'password') { pw.type = 'text';     ico.textContent = 'visibility_off'; }
+      else                        { pw.type = 'password'; ico.textContent = 'visibility'; }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-HK">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>賽事詳情 — CMHK VIP 賽馬智能分析</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode:"class",
+    theme:{ extend:{ colors:{
+      "primary-container":"#fcd535","primary":"#fff4d7","primary-active":"#f0b90b",
+      "canvas-dark":"#0b0e11","surface-card-dark":"#1e2329","surface-elevated-dark":"#2b3139",
+      "surface-container":"#231f15","on-surface":"#eae2d1","on-surface-variant":"#d0c6ad",
+      "muted":"#707a8a","hairline-dark":"#2b3139","outline":"#999079",
+      "trading-up":"#0ecb81","trading-down":"#f6465d","secondary":"#3fe397",
+      "ink":"#181a20","error":"#ffb4ab","info":"#3b82f6",
+    }, spacing:{ xs:"8px", xl:"32px", lg:"24px", sm:"12px", xxs:"4px", md:"16px" },
+    borderRadius:{ DEFAULT:"0.125rem", lg:"0.25rem", xl:"0.5rem", full:"0.75rem" },
+    fontSize:{
+      "title-md":["20px",{lineHeight:"1.35",fontWeight:"600"}],
+      "number-md":["16px",{lineHeight:"1.4",fontWeight:"500"}],
+      "body-md":["14px",{lineHeight:"1.5",fontWeight:"400"}],
+      "button":["14px",{lineHeight:"1",fontWeight:"600"}],
+    }
+    }}
+  };
+</script>
+</head>
+<body class="bg-canvas-dark text-on-surface text-[14px] leading-relaxed h-screen overflow-hidden flex flex-col md:flex-row">
+
+<!-- Sidebar -->
+<nav class="hidden md:flex flex-col bg-[#181a20] text-[#FCD535] font-['Work_Sans'] text-xs uppercase font-bold tracking-widest fixed left-0 top-0 h-full w-64 border-r border-[#2b3139] z-[90]">
+  <div class="p-lg border-b border-hairline-dark">
+    <h1 class="text-[#FCD535] font-black text-[20px] tracking-tighter uppercase mb-xxs">VIP Terminal</h1>
+    <p class="text-muted text-xs normal-case font-normal tracking-normal">CMHK 賽馬智能分析系統</p>
+  </div>
+  <div class="flex-1 overflow-y-auto py-md flex flex-col gap-xs">
+    <a data-nav="index.html"    href="index.html"       class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">dashboard</span>今日賽事</a>
+    <a data-nav="race.html"     href="race.html?id=1"   class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">monitoring</span>賽事詳情</a>
+    <a data-nav="analysis.html" href="analysis.html?id=1" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">psychology</span>智能分析</a>
+    <a data-nav="odds.html"     href="odds.html?id=1"   class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">bar_chart</span>賠率總覽</a>
+    <a data-nav="admin.html"    href="admin.html"        class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">database</span>後台管理</a>
+  </div>
+  <div class="p-md border-t border-hairline-dark mt-auto">
+    <div class="flex items-center gap-sm px-4 mb-md">
+      <div class="w-8 h-8 rounded-full bg-primary-container/20 border border-primary-container/30 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary-container text-[16px]" style="font-variation-settings:'FILL' 1;">person</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-on-surface text-xs font-medium normal-case tracking-normal" data-user-name>—</span>
+        <span class="text-muted text-[10px] normal-case tracking-normal" data-user-role>—</span>
+      </div>
+    </div>
+    <button onclick="logout()" class="w-full text-muted hover:text-on-surface font-semibold text-xs py-sm border border-hairline-dark rounded hover:bg-surface-elevated-dark transition-all normal-case tracking-normal">登出系統</button>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="flex-1 md:ml-64 h-full overflow-y-auto overflow-x-hidden flex flex-col">
+
+  <header class="hidden md:flex justify-between items-center h-[64px] px-lg border-b border-hairline-dark bg-canvas-dark sticky top-0 z-50 shrink-0">
+    <a href="index.html" class="text-muted hover:text-on-surface flex items-center gap-xs text-sm transition-colors">
+      <span class="material-symbols-outlined text-[18px]">arrow_back</span>返回今日賽事
+    </a>
+    <button onclick="logout()" class="text-muted hover:text-on-surface font-semibold text-sm">登出</button>
+  </header>
+
+  <div class="p-lg md:p-xl flex-1 flex flex-col gap-lg max-w-[1440px] mx-auto w-full">
+
+    <!-- Race Selector Tabs -->
+    <div class="flex gap-xs overflow-x-auto pb-xs scrollbar-none -mx-lg px-lg md:mx-0 md:px-0">
+      <div id="race-tabs" class="flex gap-xs"></div>
+    </div>
+
+    <!-- Race Info Cards Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-md" id="race-info-cards"></div>
+
+    <!-- Odds Type Selector + Table -->
+    <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden flex flex-col">
+      <div class="p-lg border-b border-hairline-dark flex flex-col md:flex-row md:items-center md:justify-between gap-md bg-surface-elevated-dark/40">
+        <h3 class="text-[20px] font-semibold text-on-surface flex items-center gap-sm">
+          <span class="material-symbols-outlined text-primary-container" style="font-variation-settings:'FILL' 1;">table_chart</span>
+          <span id="race-title">第 — 場：—</span>
+        </h3>
+        <div class="flex gap-sm items-center">
+          <!-- Odds type tabs -->
+          <div class="flex gap-xs">
+            <button data-odds="winplace" onclick="switchOdds('winplace')" class="odds-tab bg-primary-container text-ink text-xs font-semibold px-md py-xs rounded transition-all">獨贏/位置</button>
+            <button data-odds="quinella" onclick="switchOdds('quinella')" class="odds-tab bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">連贏</button>
+            <button data-odds="forecast" onclick="switchOdds('forecast')" class="odds-tab bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">二重彩</button>
+            <button data-odds="tierce"   onclick="switchOdds('tierce')"   class="odds-tab bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">三重彩</button>
+          </div>
+          <a id="analysis-link" href="#" class="bg-surface-elevated-dark border border-hairline-dark text-on-surface text-xs px-md py-xs rounded hover:bg-primary-container/10 hover:text-primary-container transition-all flex items-center gap-xxs">
+            <span class="material-symbols-outlined text-[14px]">psychology</span>AI 分析
+          </a>
+        </div>
+      </div>
+
+      <!-- Win/Place Table -->
+      <div id="table-winplace" class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[900px]">
+          <thead class="bg-canvas-dark/50 border-b border-hairline-dark">
+            <tr>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider w-12">馬號</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">馬名</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">檔位</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">負磅</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">騎師</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">練馬師</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">評分</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">+/-</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">排位體重</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">6次近績</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">配備</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-right">獨贏</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-right">位置</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">AI評分</th>
+            </tr>
+          </thead>
+          <tbody id="horse-tbody" class="divide-y divide-hairline-dark"></tbody>
+        </table>
+      </div>
+
+      <!-- Quinella placeholder -->
+      <div id="table-quinella" class="hidden p-xl text-center text-muted">
+        <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">lock</span>
+        <p class="text-sm">連贏賠率資料待錄入</p>
+        <p class="text-xs mt-xs">請在後台管理頁面錄入連贏賠率數據</p>
+        <a href="admin.html" class="inline-block mt-md text-primary-container hover:text-primary-active text-sm transition-colors">前往後台錄入 →</a>
+      </div>
+
+      <!-- Forecast placeholder -->
+      <div id="table-forecast" class="hidden p-xl text-center text-muted">
+        <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">lock</span>
+        <p class="text-sm">二重彩賠率資料待錄入</p>
+        <p class="text-xs mt-xs">請在後台管理頁面錄入二重彩賠率數據</p>
+        <a href="admin.html" class="inline-block mt-md text-primary-container hover:text-primary-active text-sm transition-colors">前往後台錄入 →</a>
+      </div>
+
+      <!-- Tierce placeholder -->
+      <div id="table-tierce" class="hidden p-xl text-center text-muted">
+        <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">lock</span>
+        <p class="text-sm">三重彩賠率資料待錄入</p>
+        <p class="text-xs mt-xs">請在後台管理頁面錄入三重彩賠率數據</p>
+        <a href="admin.html" class="inline-block mt-md text-primary-container hover:text-primary-active text-sm transition-colors">前往後台錄入 →</a>
+      </div>
+    </div>
+
+    <!-- Reserves Section -->
+    <div id="reserves-section" class="hidden">
+      <h3 class="text-[16px] font-semibold text-on-surface mb-md flex items-center gap-sm">
+        <span class="material-symbols-outlined text-muted text-[18px]" style="font-variation-settings:'FILL' 0;">group_add</span>後備馬匹
+      </h3>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden">
+        <table class="w-full text-left border-collapse min-w-[600px]">
+          <thead class="bg-canvas-dark/50 border-b border-hairline-dark">
+            <tr>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider w-12">編號</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">馬名</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">排位體重</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">負磅</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">評分</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">6次近績</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">練馬師</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">優先次序</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">配備</th>
+            </tr>
+          </thead>
+          <tbody id="reserves-tbody" class="divide-y divide-hairline-dark"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script>
+  initPage(false);
+
+  let currentRaceId = parseInt(getUrlParam('id') || '1');
+  let currentOdds   = 'winplace';
+
+  async function renderRace(id) {
+    currentRaceId = id;
+    // Show loading state
+    document.getElementById('horse-tbody').innerHTML =
+      `<tr><td colspan="14" class="py-lg text-center text-muted text-sm"><span class="material-symbols-outlined animate-spin text-primary-container mr-xs">progress_activity</span>正在載入資料…</td></tr>`;
+
+    const race = await apiGetRace(id);
+    if (!race) return;
+
+    // Update page title & analysis link
+    document.title = `第${id}場 ${race.name} — CMHK VIP`;
+    document.getElementById('race-title').textContent = `第 ${id} 場：${race.name}`;
+    document.getElementById('analysis-link').href = `analysis.html?id=${id}`;
+
+    // Race info cards
+    const cards = document.getElementById('race-info-cards');
+    cards.innerHTML = `
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md"><p class="text-muted text-[10px] uppercase tracking-wider">距離/場地</p><p class="text-[16px] font-semibold text-on-surface mt-xs font-['Inter']">${race.distance}m</p><p class="text-muted text-xs">${race.trackType}</p></div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md"><p class="text-muted text-[10px] uppercase tracking-wider">班次/賠率</p><p class="text-[16px] font-semibold text-on-surface mt-xs">${race.grade}</p><p class="text-muted text-xs">${race.ratingRange}</p></div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md"><p class="text-muted text-[10px] uppercase tracking-wider">場地狀況</p><p class="text-[16px] font-semibold text-trading-down mt-xs">${race.condition}</p><p class="text-muted text-xs">${race.conditionEn}</p></div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md"><p class="text-muted text-[10px] uppercase tracking-wider">獎金/時間</p><p class="text-[16px] font-semibold text-primary-container mt-xs font-['Inter']">${formatCurrency(race.prize)}</p><p class="text-muted text-xs">${race.time} 開賽</p></div>
+    `;
+
+    // Horse table
+    const tbody = document.getElementById('horse-tbody');
+    tbody.innerHTML = '';
+    if (!race.horses || race.horses.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="14" class="py-xl text-center text-muted text-sm">本場資料待錄入 — 請前往<a href="admin.html" class="text-primary-container hover:underline ml-xs">後台管理</a>錄入馬匹資料</td></tr>`;
+    } else {
+      race.horses.forEach(h => {
+        const score      = calcHorseScore(h, race.horses);
+        const sColor     = score >= 78 ? 'text-trading-up' : score >= 65 ? 'text-primary-container' : 'text-muted';
+        const wColor     = h.winOdds  <= 6  ? 'text-trading-up' : h.winOdds  <= 12 ? 'text-on-surface' : 'text-muted';
+        const rdColor    = h.ratingDiff > 0 ? 'text-trading-up' : h.ratingDiff < 0 ? 'text-trading-down' : 'text-muted';
+        const rdText     = h.ratingDiff > 0 ? `+${h.ratingDiff}` : h.ratingDiff === 0 ? '—' : String(h.ratingDiff);
+        const formHtml   = (h.recentForm || []).slice(0, 6).map(p => formBadge(p)).join('');
+        tbody.innerHTML += `
+          <tr class="hover:bg-surface-elevated-dark/30 transition-colors group cursor-pointer" onclick="goToAnalysis(${id})">
+            <td class="py-md px-md">
+              <div class="w-6 h-6 rounded bg-surface-elevated-dark flex items-center justify-center text-primary-container text-xs font-bold border border-hairline-dark font-['Inter']">${h.no}</div>
+            </td>
+            <td class="py-md px-md">
+              <div class="text-on-surface font-medium text-sm">${h.name}</div>
+              <div class="text-muted text-[10px]">${h.nameEn || ''}</div>
+            </td>
+            <td class="py-md px-md text-center text-on-surface font-['Inter'] text-sm">${h.gate}</td>
+            <td class="py-md px-md text-center text-on-surface font-['Inter'] text-sm font-medium">${h.weight}</td>
+            <td class="py-md px-md">
+              <div class="text-on-surface text-sm">${h.jockey}</div>
+            </td>
+            <td class="py-md px-md">
+              <div class="text-on-surface text-sm">${h.trainer}</div>
+            </td>
+            <td class="py-md px-md text-center text-on-surface font-['Inter'] text-sm font-semibold">${h.rating}</td>
+            <td class="py-md px-md text-center font-['Inter'] text-sm ${rdColor}">${rdText}</td>
+            <td class="py-md px-md text-center text-on-surface font-['Inter'] text-sm">${h.bodyWeight || '—'}</td>
+            <td class="py-md px-md"><div class="flex gap-xxs flex-wrap">${formHtml}</div></td>
+            <td class="py-md px-md"><span class="text-muted text-[11px] font-['Inter']">${h.gear || '—'}</span></td>
+            <td class="py-md px-md text-right font-['Inter'] text-[16px] font-medium ${wColor}">${formatOdds(h.winOdds)}</td>
+            <td class="py-md px-md text-right font-['Inter'] text-sm text-on-surface">${formatOdds(h.placeOdds)}</td>
+            <td class="py-md px-md text-center">
+              <span class="font-['Inter'] font-bold text-sm ${sColor}">${score}</span>
+            </td>
+          </tr>`;
+      });
+    }
+
+    // Reserves
+    const resSec  = document.getElementById('reserves-section');
+    const resTbody = document.getElementById('reserves-tbody');
+    if (race.reserves && race.reserves.length > 0) {
+      resSec.classList.remove('hidden');
+      resTbody.innerHTML = race.reserves.map(h => `
+        <tr class="hover:bg-surface-elevated-dark/20 transition-colors">
+          <td class="py-sm px-md text-muted text-sm font-['Inter']">${h.no}</td>
+          <td class="py-sm px-md text-on-surface text-sm font-medium">${h.name}</td>
+          <td class="py-sm px-md text-center text-on-surface font-['Inter'] text-sm">${h.bodyWeight}</td>
+          <td class="py-sm px-md text-center text-on-surface font-['Inter'] text-sm">${h.weight}</td>
+          <td class="py-sm px-md text-center text-on-surface font-['Inter'] text-sm">${h.rating}</td>
+          <td class="py-sm px-md"><div class="flex gap-xxs">${(h.recentForm||[]).slice(0,6).map(p=>formBadge(p)).join('')}</div></td>
+          <td class="py-sm px-md text-on-surface text-sm">${h.trainer}</td>
+          <td class="py-sm px-md text-center text-muted text-sm">${h.priority}</td>
+          <td class="py-sm px-md text-muted text-[11px] font-['Inter']">${h.gear}</td>
+        </tr>`).join('');
+    } else {
+      resSec.classList.add('hidden');
+    }
+
+    // Update tab active state
+    document.querySelectorAll('.race-tab').forEach(el => {
+      const rid = parseInt(el.dataset.raceId);
+      el.className = rid === id
+        ? 'race-tab flex-shrink-0 bg-primary-container text-ink text-xs font-semibold px-md py-xs rounded transition-all'
+        : 'race-tab flex-shrink-0 bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer';
+      el.onclick = () => { window.history.pushState({}, '', `race.html?id=${rid}`); renderRace(rid); };
+    });
+  }
+
+  function switchOdds(type) {
+    currentOdds = type;
+    ['winplace','quinella','forecast','tierce'].forEach(t => {
+      document.getElementById(`table-${t}`)?.classList.add('hidden');
+      document.querySelector(`[data-odds="${t}"]`)?.classList.replace('bg-primary-container','bg-surface-elevated-dark');
+      document.querySelector(`[data-odds="${t}"]`)?.classList.replace('text-ink','text-muted');
+    });
+    document.getElementById(`table-${type}`)?.classList.remove('hidden');
+    const btn = document.querySelector(`[data-odds="${type}"]`);
+    if (btn) { btn.classList.replace('bg-surface-elevated-dark','bg-primary-container'); btn.classList.replace('text-muted','text-ink'); }
+  }
+
+  // Build race tabs from API then render
+  async function boot() {
+    const races  = await apiGetRaces();
+    const tabBar = document.getElementById('race-tabs');
+    races.forEach(r => {
+      const btn = document.createElement('button');
+      btn.dataset.raceId = r.id;
+      btn.className = 'race-tab flex-shrink-0 bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer';
+      btn.textContent = `第${r.id}場`;
+      btn.onclick = () => { window.history.pushState({}, '', `race.html?id=${r.id}`); renderRace(r.id); };
+      tabBar.appendChild(btn);
+    });
+    renderRace(currentRaceId);
+  }
+  boot();
+</script>
+</body>
+</html>

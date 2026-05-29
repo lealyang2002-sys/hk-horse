@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-HK">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>後台管理 — CMHK VIP 賽馬智能分析</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode:"class",
+    theme:{ extend:{ colors:{
+      "primary-container":"#fcd535","primary":"#fff4d7","primary-active":"#f0b90b",
+      "canvas-dark":"#0b0e11","surface-card-dark":"#1e2329","surface-elevated-dark":"#2b3139",
+      "surface-container":"#231f15","on-surface":"#eae2d1","on-surface-variant":"#d0c6ad",
+      "muted":"#707a8a","hairline-dark":"#2b3139","outline":"#999079",
+      "trading-up":"#0ecb81","trading-down":"#f6465d","secondary":"#3fe397",
+      "ink":"#181a20","error":"#ffb4ab","info":"#3b82f6",
+    }, spacing:{ xs:"8px", xl:"32px", lg:"24px", sm:"12px", xxs:"4px", md:"16px" },
+    borderRadius:{ DEFAULT:"0.125rem", lg:"0.25rem", xl:"0.5rem", full:"0.75rem" },
+    fontSize:{
+      "title-md":["20px",{lineHeight:"1.35",fontWeight:"600"}],
+      "number-md":["16px",{lineHeight:"1.4",fontWeight:"500"}],
+      "body-md":["14px",{lineHeight:"1.5",fontWeight:"400"}],
+      "button":["14px",{lineHeight:"1",fontWeight:"600"}],
+    }
+    }}
+  };
+</script>
+</head>
+<body class="bg-canvas-dark text-on-surface text-[14px] leading-relaxed h-screen overflow-hidden flex flex-col md:flex-row">
+
+<!-- Sidebar -->
+<nav class="hidden md:flex flex-col bg-[#181a20] text-[#FCD535] font-['Work_Sans'] text-xs uppercase font-bold tracking-widest fixed left-0 top-0 h-full w-64 border-r border-[#2b3139] z-[90]">
+  <div class="p-lg border-b border-hairline-dark">
+    <h1 class="text-[#FCD535] font-black text-[20px] tracking-tighter uppercase mb-xxs">VIP Terminal</h1>
+    <p class="text-muted text-xs normal-case font-normal tracking-normal">CMHK 賽馬智能分析系統</p>
+  </div>
+  <div class="flex-1 overflow-y-auto py-md flex flex-col gap-xs">
+    <a data-nav="index.html"    href="index.html"         class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">dashboard</span>今日賽事</a>
+    <a data-nav="race.html"     href="race.html?id=1"     class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">monitoring</span>賽事詳情</a>
+    <a data-nav="analysis.html" href="analysis.html?id=1" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">psychology</span>智能分析</a>
+    <a data-nav="odds.html"     href="odds.html?id=1"     class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">bar_chart</span>賠率總覽</a>
+    <a data-nav="admin.html"    href="admin.html"          class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">database</span>後台管理</a>
+  </div>
+  <div class="p-md border-t border-hairline-dark mt-auto">
+    <div class="flex items-center gap-sm px-4 mb-md">
+      <div class="w-8 h-8 rounded-full bg-primary-container/20 border border-primary-container/30 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary-container text-[16px]" style="font-variation-settings:'FILL' 1;">person</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-on-surface text-xs font-medium normal-case tracking-normal" data-user-name>—</span>
+        <span class="text-muted text-[10px] normal-case tracking-normal" data-user-role>—</span>
+      </div>
+    </div>
+    <button onclick="logout()" class="w-full text-muted hover:text-on-surface font-semibold text-xs py-sm border border-hairline-dark rounded hover:bg-surface-elevated-dark transition-all normal-case tracking-normal">登出系統</button>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="flex-1 md:ml-64 h-full overflow-y-auto overflow-x-hidden flex flex-col">
+
+  <header class="hidden md:flex justify-between items-center h-[64px] px-lg border-b border-hairline-dark bg-canvas-dark sticky top-0 z-50 shrink-0">
+    <div class="flex items-center gap-md">
+      <h1 class="text-[16px] font-semibold text-on-surface">後台控制台</h1>
+      <span class="bg-info/20 text-info border border-info/30 text-[10px] font-semibold px-xs py-xxs rounded uppercase tracking-wider">Auto Fetch</span>
+    </div>
+    <button onclick="logout()" class="text-muted hover:text-on-surface font-semibold text-sm">登出</button>
+  </header>
+
+  <div class="p-lg md:p-xl flex-1 flex flex-col gap-lg max-w-[1440px] mx-auto w-full">
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-lg right-lg z-[200] px-lg py-sm rounded-xl border text-sm font-medium shadow-xl transition-all"></div>
+
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:justify-between md:items-end gap-md">
+      <div>
+        <h2 class="text-[40px] font-bold leading-tight text-on-surface tracking-tight">數據控制台</h2>
+        <p class="text-muted text-[14px] mt-xs">自動抓取 · 緩存管理 · 賠率覆蓋</p>
+      </div>
+      <div class="flex gap-sm">
+        <button onclick="triggerFetch()" id="fetch-btn"
+                class="bg-primary-container text-ink font-semibold text-sm px-lg py-sm rounded hover:bg-primary-active transition-colors flex items-center gap-xs">
+          <span class="material-symbols-outlined text-[18px]" id="fetch-icon">sync</span>
+          立即抓取馬會資料
+        </button>
+        <a href="/api/admin/export" class="bg-surface-elevated-dark border border-hairline-dark text-on-surface text-sm px-md py-sm rounded hover:bg-surface-container transition-colors flex items-center gap-xs">
+          <span class="material-symbols-outlined text-[18px]">download</span>匯出 JSON
+        </a>
+      </div>
+    </div>
+
+    <!-- System Status Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-md">
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-[10px] uppercase tracking-wider mb-xs">伺服器狀態</p>
+        <div class="flex items-center gap-xs mt-xs">
+          <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-muted"></span>
+          <span id="status-text" class="text-sm font-semibold text-muted">檢測中…</span>
+        </div>
+      </div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-[10px] uppercase tracking-wider mb-xs">最後抓取</p>
+        <p class="text-sm font-medium text-on-surface mt-xs" id="status-last-fetch">—</p>
+      </div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-[10px] uppercase tracking-wider mb-xs">比賽日期</p>
+        <p class="text-sm font-medium text-on-surface mt-xs font-['Inter']" id="status-race-date">—</p>
+      </div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-[10px] uppercase tracking-wider mb-xs">場地</p>
+        <p class="text-sm font-medium text-on-surface mt-xs" id="status-venue">—</p>
+      </div>
+    </div>
+
+    <!-- Manual Fetch Form -->
+    <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden">
+      <div class="p-md border-b border-hairline-dark bg-surface-elevated-dark/40 flex items-center gap-sm">
+        <span class="material-symbols-outlined text-primary-container text-[18px]" style="font-variation-settings:'FILL' 1;">cloud_download</span>
+        <h3 class="text-[16px] font-semibold text-on-surface">指定日期抓取</h3>
+        <span class="text-muted text-xs ml-auto">留空 = 自動檢測下一個賽事日</span>
+      </div>
+      <div class="p-lg flex flex-wrap gap-md items-end">
+        <div class="flex flex-col gap-xs">
+          <label class="text-muted text-[10px] uppercase tracking-wider">比賽日期</label>
+          <input type="date" id="fetch-date"
+                 class="bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-sm py-xs focus:ring-1 focus:ring-primary-container outline-none">
+        </div>
+        <div class="flex flex-col gap-xs">
+          <label class="text-muted text-[10px] uppercase tracking-wider">場地</label>
+          <select id="fetch-venue" class="bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-sm py-xs focus:ring-1 focus:ring-primary-container outline-none">
+            <option value="">自動</option>
+            <option value="ST">沙田 (ST)</option>
+            <option value="HV">跑馬地 (HV)</option>
+          </select>
+        </div>
+        <button onclick="triggerFetch(true)"
+                class="bg-primary-container text-ink font-semibold text-sm px-lg py-[9px] rounded hover:bg-primary-active transition-colors flex items-center gap-xs">
+          <span class="material-symbols-outlined text-[16px]">download</span>抓取指定場次
+        </button>
+      </div>
+    </div>
+
+    <!-- Race Data Overview Table -->
+    <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden">
+      <div class="p-md border-b border-hairline-dark bg-surface-elevated-dark/40 flex items-center justify-between">
+        <h3 class="text-[16px] font-semibold text-on-surface flex items-center gap-sm">
+          <span class="material-symbols-outlined text-primary-container text-[18px]" style="font-variation-settings:'FILL' 1;">table_view</span>
+          已載入賽事資料
+        </h3>
+        <button onclick="loadStatus()" class="text-muted hover:text-on-surface text-xs flex items-center gap-xxs transition-colors">
+          <span class="material-symbols-outlined text-[14px]">refresh</span>刷新
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-canvas-dark/50 border-b border-hairline-dark">
+            <tr>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider w-12">場次</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider">賽事名稱</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">時間</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">班次</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">距離</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">馬匹數</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">賠率</th>
+              <th class="py-sm px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="race-overview-tbody" class="divide-y divide-hairline-dark">
+            <tr><td colspan="8" class="py-xl text-center text-muted text-sm">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Odds Override Panel -->
+    <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden">
+      <div class="p-md border-b border-hairline-dark bg-surface-elevated-dark/40">
+        <h3 class="text-[16px] font-semibold text-on-surface flex items-center gap-sm">
+          <span class="material-symbols-outlined text-primary-container text-[18px]" style="font-variation-settings:'FILL' 1;">edit_note</span>
+          賠率手動覆蓋
+          <span class="text-muted text-xs font-normal ml-auto">當自動抓取未能獲取賠率時使用</span>
+        </h3>
+      </div>
+      <div class="p-lg flex flex-wrap gap-md items-end border-b border-hairline-dark">
+        <div class="flex flex-col gap-xs">
+          <label class="text-muted text-[10px] uppercase tracking-wider">選擇場次</label>
+          <select id="odds-race-select" class="bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-sm py-xs focus:ring-1 focus:ring-primary-container outline-none" onchange="loadOddsOverrideTable()">
+          </select>
+        </div>
+        <button onclick="saveOddsOverride()"
+                class="bg-surface-elevated-dark border border-hairline-dark text-on-surface text-sm px-md py-[9px] rounded hover:bg-primary-container/10 hover:text-primary-container transition-colors flex items-center gap-xs">
+          <span class="material-symbols-outlined text-[16px]">save</span>儲存賠率
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[500px]">
+          <thead class="bg-canvas-dark/50 border-b border-hairline-dark">
+            <tr>
+              <th class="py-xs px-md text-[10px] font-medium text-muted uppercase tracking-wider w-12">馬號</th>
+              <th class="py-xs px-md text-[10px] font-medium text-muted uppercase tracking-wider">馬名</th>
+              <th class="py-xs px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center w-28">獨贏 (Win)</th>
+              <th class="py-xs px-md text-[10px] font-medium text-muted uppercase tracking-wider text-center w-28">位置 (Place)</th>
+            </tr>
+          </thead>
+          <tbody id="odds-override-tbody" class="divide-y divide-hairline-dark">
+            <tr><td colspan="4" class="py-lg text-center text-muted text-xs">請選擇場次</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Server Logs -->
+    <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden">
+      <div class="p-md border-b border-hairline-dark bg-surface-elevated-dark/40 flex items-center justify-between">
+        <h3 class="text-[16px] font-semibold text-on-surface flex items-center gap-sm">
+          <span class="material-symbols-outlined text-muted text-[18px]">terminal</span>
+          系統日誌
+        </h3>
+        <button onclick="document.getElementById('log').innerHTML=''" class="text-muted hover:text-trading-down text-xs flex items-center gap-xxs transition-colors">
+          <span class="material-symbols-outlined text-[14px]">clear_all</span>清除
+        </button>
+      </div>
+      <div id="log" class="font-['Inter'] text-xs text-muted p-md h-40 overflow-y-auto space-y-xs bg-canvas-dark/40"></div>
+    </div>
+
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script>
+  initPage(true);
+
+  // ---- Toast -------------------------------------------------------
+  function showToast(msg, ok = true) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `fixed bottom-lg right-lg z-[200] px-lg py-sm rounded-xl border text-sm font-medium shadow-xl
+      ${ok ? 'bg-trading-up/20 border-trading-up/40 text-trading-up' : 'bg-trading-down/20 border-trading-down/40 text-trading-down'}`;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 3000);
+  }
+
+  function addLog(msg, type = 'info') {
+    const el  = document.getElementById('log');
+    const col  = type === 'ok' ? 'text-trading-up' : type === 'err' ? 'text-trading-down' : 'text-muted';
+    const time = new Date().toLocaleTimeString('zh-HK');
+    el.innerHTML += `<div class="${col}"><span class="text-outline">[${time}]</span> ${msg}</div>`;
+    el.scrollTop  = el.scrollHeight;
+  }
+
+  // ---- Status polling ----------------------------------------------
+  async function loadStatus() {
+    try {
+      const s = await apiGetStatus();
+      const dot  = document.getElementById('status-dot');
+      const txt  = document.getElementById('status-text');
+      if (s.ok) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-trading-up';
+        txt.className  = 'text-sm font-semibold text-trading-up';
+        txt.textContent = '正常運行';
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-trading-down';
+        txt.className  = 'text-sm font-semibold text-trading-down';
+        txt.textContent = '抓取異常';
+        addLog(`Error: ${s.error}`, 'err');
+      }
+      document.getElementById('status-last-fetch').textContent =
+        s.lastFetch ? new Date(s.lastFetch).toLocaleString('zh-HK') : '—';
+      document.getElementById('status-race-date').textContent = s.raceDate || '—';
+      document.getElementById('status-venue').textContent     = s.venue || '—';
+    } catch (_) {
+      document.getElementById('status-dot').className  = 'w-2.5 h-2.5 rounded-full bg-muted';
+      document.getElementById('status-text').textContent = '無法連接伺服器';
+      addLog('Backend server not reachable. Run: python server.py', 'err');
+    }
+    await loadRaceOverview();
+  }
+
+  // ---- Race overview table -----------------------------------------
+  async function loadRaceOverview() {
+    const tbody = document.getElementById('race-overview-tbody');
+    const sel   = document.getElementById('odds-race-select');
+    try {
+      const races = await apiGetRaces();
+      tbody.innerHTML = '';
+      sel.innerHTML   = '';
+      races.forEach(r => {
+        const hasOdds = true; // placeholder
+        tbody.innerHTML += `
+          <tr class="hover:bg-surface-elevated-dark/20 transition-colors">
+            <td class="py-sm px-md">
+              <div class="w-6 h-6 rounded bg-surface-elevated-dark flex items-center justify-center text-primary-container text-xs font-bold font-['Inter']">${r.id}</div>
+            </td>
+            <td class="py-sm px-md">
+              <div class="text-on-surface text-sm font-medium">${r.name}</div>
+              <div class="text-muted text-[10px]">${r.nameEn || ''}</div>
+            </td>
+            <td class="py-sm px-md text-center text-on-surface text-sm font-['Inter']">${r.time}</td>
+            <td class="py-sm px-md text-center text-muted text-sm">${r.grade}</td>
+            <td class="py-sm px-md text-center text-on-surface text-sm font-['Inter']">${r.distance}m</td>
+            <td class="py-sm px-md text-center">
+              <span class="${r.totalRunners>0?'text-trading-up':'text-muted'} font-['Inter'] text-sm font-bold">${r.totalRunners || 0}</span>
+            </td>
+            <td class="py-sm px-md text-center">
+              <span class="text-[10px] px-xs py-xxs rounded border ${r.totalRunners>0?'bg-trading-up/10 text-trading-up border-trading-up/20':'bg-surface-elevated-dark text-muted border-hairline-dark'}">
+                ${r.totalRunners > 0 ? '已載入' : '待抓取'}
+              </span>
+            </td>
+            <td class="py-sm px-md text-center">
+              <div class="flex gap-xs justify-center">
+                <a href="race.html?id=${r.id}" class="text-muted hover:text-primary-container text-[11px] flex items-center gap-xxs transition-colors">
+                  <span class="material-symbols-outlined text-[14px]">open_in_new</span>查看
+                </a>
+              </div>
+            </td>
+          </tr>`;
+        // Add to odds select
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = `第${r.id}場 ${r.name}`;
+        sel.appendChild(opt);
+      });
+      if (races.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-xl text-center text-muted text-sm">暫無資料 — 請點擊「立即抓取」</td></tr>`;
+      }
+    } catch (_) {
+      tbody.innerHTML = `<tr><td colspan="8" class="py-xl text-center text-muted text-sm">無法載入 — 伺服器未啟動</td></tr>`;
+    }
+  }
+
+  // ---- Fetch trigger -----------------------------------------------
+  async function triggerFetch(useForm = false) {
+    const btn  = document.getElementById('fetch-btn');
+    const icon = document.getElementById('fetch-icon');
+    btn.disabled  = true;
+    icon.textContent = 'progress_activity';
+    icon.classList.add('animate-spin');
+    addLog('正在抓取馬會公開資料…', 'info');
+
+    const raceDate = useForm ? document.getElementById('fetch-date').value || null : null;
+    const venue    = useForm ? document.getElementById('fetch-venue').value || null : null;
+
+    try {
+      const res = await apiTriggerFetch(raceDate, venue);
+      showToast(res.message || '抓取請求已發送');
+      addLog('抓取請求已發送，後台處理中…', 'ok');
+      // Poll status after 5 seconds
+      setTimeout(loadStatus, 5000);
+    } catch (e) {
+      showToast('抓取失敗 — ' + e.message, false);
+      addLog('抓取失敗: ' + e.message, 'err');
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        icon.textContent = 'sync';
+        icon.classList.remove('animate-spin');
+      }, 3000);
+    }
+  }
+
+  // ---- Odds override -----------------------------------------------
+  async function loadOddsOverrideTable() {
+    const raceId = parseInt(document.getElementById('odds-race-select').value);
+    const tbody  = document.getElementById('odds-override-tbody');
+    tbody.innerHTML = '<tr><td colspan="4" class="py-lg text-center text-muted text-xs">載入中…</td></tr>';
+    try {
+      const race = await apiGetRace(raceId);
+      const horses = race?.horses || [];
+      if (!horses.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-lg text-center text-muted text-xs">本場無馬匹資料</td></tr>';
+        return;
+      }
+      tbody.innerHTML = horses.map(h => `
+        <tr class="hover:bg-surface-elevated-dark/10 transition-colors" data-horse="${h.no}">
+          <td class="py-xs px-md">
+            <div class="w-6 h-6 rounded bg-surface-elevated-dark flex items-center justify-center text-primary-container text-[10px] font-bold font-['Inter']">${h.no}</div>
+          </td>
+          <td class="py-xs px-md text-on-surface text-sm">${h.name}</td>
+          <td class="py-xs px-md text-center">
+            <input type="number" step="0.1" min="1" value="${h.winOdds || ''}" placeholder="—"
+                   data-field="win"
+                   class="w-20 bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-xs py-xxs focus:ring-1 focus:ring-primary-container outline-none text-center font-['Inter']">
+          </td>
+          <td class="py-xs px-md text-center">
+            <input type="number" step="0.1" min="1" value="${h.placeOdds || ''}" placeholder="—"
+                   data-field="place"
+                   class="w-20 bg-canvas-dark border border-hairline-dark text-on-surface text-sm rounded px-xs py-xxs focus:ring-1 focus:ring-primary-container outline-none text-center font-['Inter']">
+          </td>
+        </tr>`).join('');
+    } catch (_) {
+      tbody.innerHTML = '<tr><td colspan="4" class="py-lg text-center text-muted text-xs">載入失敗</td></tr>';
+    }
+  }
+
+  async function saveOddsOverride() {
+    const raceId = parseInt(document.getElementById('odds-race-select').value);
+    const rows   = document.querySelectorAll('#odds-override-tbody tr[data-horse]');
+    try {
+      const race   = await apiGetRace(raceId);
+      const horses = race?.horses || [];
+      rows.forEach(row => {
+        const no    = parseInt(row.dataset.horse);
+        const win   = parseFloat(row.querySelector('[data-field="win"]').value);
+        const place = parseFloat(row.querySelector('[data-field="place"]').value);
+        const h     = horses.find(h => h.no === no);
+        if (h) {
+          if (!isNaN(win))   h.winOdds   = win;
+          if (!isNaN(place)) h.placeOdds = place;
+        }
+      });
+      await apiSaveHorses(raceId, horses);
+      showToast(`第 ${raceId} 場賠率已儲存`);
+      addLog(`第 ${raceId} 場賠率手動覆蓋成功`, 'ok');
+    } catch (e) {
+      showToast('儲存失敗 — ' + e.message, false);
+      addLog('賠率儲存失敗: ' + e.message, 'err');
+    }
+  }
+
+  // ---- Init -----------------------------------------------------------
+  loadStatus();
+  setInterval(loadStatus, 30000); // refresh status every 30s
+</script>
+</body>
+</html>

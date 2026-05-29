@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-HK">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>今日賽事 — CMHK VIP 賽馬智能分析</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode:"class",
+    theme:{ extend:{ colors:{
+      "primary-container":"#fcd535","primary":"#fff4d7","primary-active":"#f0b90b",
+      "canvas-dark":"#0b0e11","surface-card-dark":"#1e2329","surface-elevated-dark":"#2b3139",
+      "surface-container":"#231f15","surface-container-high":"#2d2a1f",
+      "on-surface":"#eae2d1","on-surface-variant":"#d0c6ad","muted":"#707a8a","muted-strong":"#929aa5",
+      "hairline-dark":"#2b3139","outline":"#999079","outline-variant":"#4d4633",
+      "trading-up":"#0ecb81","trading-down":"#f6465d","secondary":"#3fe397",
+      "info":"#3b82f6","ink":"#181a20","error":"#ffb4ab",
+    }, spacing:{ xs:"8px", xl:"32px", lg:"24px", sm:"12px", xxs:"4px", md:"16px" },
+    borderRadius:{ DEFAULT:"0.125rem", lg:"0.25rem", xl:"0.5rem", full:"0.75rem" },
+    fontSize:{
+      "title-md":["20px",{lineHeight:"1.35",fontWeight:"600"}],
+      "display-md":["40px",{lineHeight:"1.15",letterSpacing:"-0.3px",fontWeight:"600"}],
+      "number-md":["16px",{lineHeight:"1.4",fontWeight:"500"}],
+      "body-md":["14px",{lineHeight:"1.5",fontWeight:"400"}],
+      "button":["14px",{lineHeight:"1",fontWeight:"600"}],
+    }
+    }}
+  };
+</script>
+</head>
+<body class="bg-canvas-dark text-on-surface text-[14px] leading-relaxed h-screen overflow-hidden flex flex-col md:flex-row">
+
+<!-- Mobile TopNav -->
+<nav class="md:hidden flex justify-between items-center w-full px-6 sticky top-0 z-[100] bg-[#0b0e11] text-[#FCD535] text-sm font-semibold border-b h-[64px] border-[#2b3139]">
+  <div class="text-2xl font-black text-[#FCD535] tracking-tighter uppercase">CMHK VIP</div>
+  <button onclick="logout()" class="text-muted hover:text-on-surface text-sm">登出</button>
+</nav>
+
+<!-- Sidebar -->
+<nav class="hidden md:flex flex-col bg-[#181a20] text-[#FCD535] font-['Work_Sans'] text-xs uppercase font-bold tracking-widest fixed left-0 top-0 h-full w-64 border-r border-[#2b3139] z-[90]">
+  <div class="p-lg border-b border-hairline-dark">
+    <h1 class="text-[#FCD535] font-black text-[20px] tracking-tighter uppercase mb-xxs">VIP Terminal</h1>
+    <p class="text-muted text-xs normal-case font-normal tracking-normal">CMHK 賽馬智能分析系統</p>
+  </div>
+  <div class="flex-1 overflow-y-auto py-md flex flex-col gap-xs">
+    <a data-nav="index.html" href="index.html" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">dashboard</span>今日賽事
+    </a>
+    <a data-nav="race.html" href="race.html?id=1" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">monitoring</span>賽事詳情
+    </a>
+    <a data-nav="analysis.html" href="analysis.html?id=1" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">psychology</span>智能分析
+    </a>
+    <a data-nav="odds.html" href="odds.html?id=1" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">bar_chart</span>賠率總覽
+    </a>
+    <a data-nav="admin.html" href="admin.html" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">database</span>後台管理
+    </a>
+  </div>
+  <div class="p-md border-t border-hairline-dark mt-auto">
+    <div class="flex items-center gap-sm px-4 mb-md">
+      <div class="w-8 h-8 rounded-full bg-primary-container/20 border border-primary-container/30 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary-container text-[16px]" style="font-variation-settings:'FILL' 1;">person</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-on-surface text-xs font-medium normal-case tracking-normal" data-user-name>—</span>
+        <span class="text-muted text-[10px] normal-case tracking-normal" data-user-role>—</span>
+      </div>
+    </div>
+    <button onclick="logout()" class="w-full text-muted hover:text-on-surface font-semibold text-xs py-sm border border-hairline-dark rounded hover:bg-surface-elevated-dark transition-all normal-case tracking-normal">
+      登出系統
+    </button>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="flex-1 md:ml-64 h-full overflow-y-auto overflow-x-hidden flex flex-col">
+
+  <!-- Desktop TopBar -->
+  <header class="hidden md:flex justify-between items-center h-[64px] px-lg border-b border-hairline-dark bg-canvas-dark sticky top-0 z-50 shrink-0">
+    <div class="flex items-center gap-md">
+      <div class="bg-surface-card-dark border border-hairline-dark rounded px-md py-xs flex items-center gap-xs">
+        <span class="w-2 h-2 rounded-full bg-trading-up animate-pulse"></span>
+        <span class="text-xs text-muted font-medium uppercase tracking-wider">資料已更新</span>
+      </div>
+      <span class="text-muted text-xs" id="updated-time"></span>
+    </div>
+    <div class="flex items-center gap-md">
+      <span class="material-symbols-outlined cursor-pointer text-muted hover:text-on-surface" style="font-variation-settings:'FILL' 0;">notifications</span>
+      <button onclick="logout()" class="text-muted hover:text-on-surface font-semibold text-sm transition-colors">登出</button>
+    </div>
+  </header>
+
+  <div class="p-lg md:p-xl flex-1 flex flex-col gap-lg max-w-[1440px] mx-auto w-full">
+
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:justify-between md:items-end gap-md">
+      <div>
+        <p class="text-muted text-xs uppercase tracking-wider mb-xs" id="race-date"></p>
+        <h2 class="text-[40px] font-bold leading-tight text-on-surface tracking-tight">今日賽事總覽</h2>
+        <p class="text-muted text-[14px] mt-xs" id="venue-info"></p>
+      </div>
+      <!-- Next Race Countdown -->
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl px-lg py-md flex flex-col items-end gap-xs">
+        <span class="text-muted text-xs uppercase tracking-wider">首場開賽倒數</span>
+        <div class="text-primary-container font-bold text-2xl font-['Inter'] tracking-wider" id="countdown">--:--:--</div>
+        <span class="text-muted text-xs" id="first-race-label"></span>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-md">
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-xs uppercase tracking-wider mb-xs">總場次</p>
+        <p class="text-[32px] font-bold text-primary-container font-['Inter']" id="stat-races">—</p>
+      </div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-xs uppercase tracking-wider mb-xs">今日馬匹</p>
+        <p class="text-[32px] font-bold text-on-surface font-['Inter']" id="stat-horses">—</p>
+      </div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-xs uppercase tracking-wider mb-xs">場地狀況</p>
+        <p class="text-[20px] font-semibold text-on-surface mt-xs" id="stat-condition">—</p>
+      </div>
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl p-md">
+        <p class="text-muted text-xs uppercase tracking-wider mb-xs">天氣</p>
+        <p class="text-[20px] font-semibold text-on-surface mt-xs" id="stat-weather">—</p>
+      </div>
+    </div>
+
+    <!-- Race Cards Grid -->
+    <div>
+      <h3 class="text-[20px] font-semibold text-on-surface mb-md flex items-center gap-sm">
+        <span class="material-symbols-outlined text-primary-container" style="font-variation-settings:'FILL' 1;">flag</span>
+        賽事列表
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-md" id="race-grid"></div>
+    </div>
+
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script>
+  initPage(false);
+
+  function renderDashboard(meta, races) {
+    // Header info
+    document.getElementById('updated-time').textContent = '更新：' + (meta.updated || '—');
+    document.getElementById('race-date').textContent    = (meta.date || '') + ' · ' + (meta.dayOfWeek || '') + ' · ' + (meta.venue || '');
+    document.getElementById('venue-info').textContent   = `${meta.venue||''} (${meta.venueEn||''}) · ${meta.trackCondition||''}`;
+    document.getElementById('first-race-label').textContent = `首場 ${meta.firstRaceTime || '—'} 開跑`;
+
+    // Stats
+    document.getElementById('stat-races').textContent     = (meta.totalRaces || races.length) + ' 場';
+    document.getElementById('stat-horses').textContent    = races.reduce((s, r) => s + (r.totalRunners || r.horses?.length || 0), 0) + ' 匹';
+    document.getElementById('stat-condition').textContent = meta.trackCondition || '—';
+    document.getElementById('stat-weather').textContent   = meta.weather || '—';
+
+    // Countdown
+    if (meta.firstRaceTime && meta.firstRaceTime !== '—') {
+      startCountdown(meta.firstRaceTime, 'countdown');
+    }
+
+    // Grade label color
+    function gradeLabel(r) {
+      const map = { '第一班':'text-trading-down', '第二班':'text-[#ff9f1c]', '第三班':'text-primary-container', '第四班':'text-muted', '第五班':'text-muted' };
+      return map[r.grade] || 'text-muted';
+    }
+
+    // Race cards
+    const grid = document.getElementById('race-grid');
+    grid.innerHTML = '';
+    races.forEach(r => {
+      const hasData  = r.horses && r.horses.length > 0;
+      const runners  = r.totalRunners || r.horses?.length || 0;
+      const topHorse = hasData ? r.horses.reduce((best, h) => calcHorseScore(h, r.horses) > calcHorseScore(best, r.horses) ? h : best) : null;
+
+    grid.innerHTML += `
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl overflow-hidden hover:border-primary-container/30 transition-all group cursor-pointer"
+           onclick="goToRace(${r.id})">
+        <!-- Card Top -->
+        <div class="bg-surface-elevated-dark/50 px-lg py-sm border-b border-hairline-dark flex justify-between items-center">
+          <div class="flex items-center gap-sm">
+            <div class="w-7 h-7 rounded bg-primary-container/20 flex items-center justify-center text-primary-container font-bold text-sm font-['Inter']">${r.id}</div>
+            <div>
+              <div class="text-on-surface font-semibold text-sm leading-tight">${r.name}</div>
+              <div class="text-muted text-[10px]">${r.nameEn}</div>
+            </div>
+          </div>
+          <span class="text-primary-container font-bold text-sm font-['Inter']">${r.time}</span>
+        </div>
+        <!-- Card Body -->
+        <div class="p-lg flex flex-col gap-sm">
+          <div class="grid grid-cols-2 gap-xs">
+            <div>
+              <p class="text-muted text-[10px] uppercase tracking-wider">班次</p>
+              <p class="text-sm font-medium mt-xxs ${gradeLabel(r)}">${r.grade}</p>
+            </div>
+            <div>
+              <p class="text-muted text-[10px] uppercase tracking-wider">距離</p>
+              <p class="text-sm font-medium text-on-surface mt-xxs font-['Inter']">${r.distance}m</p>
+            </div>
+            <div>
+              <p class="text-muted text-[10px] uppercase tracking-wider">馬數</p>
+              <p class="text-sm font-medium text-on-surface mt-xxs font-['Inter']">${runners} 匹</p>
+            </div>
+            <div>
+              <p class="text-muted text-[10px] uppercase tracking-wider">獎金</p>
+              <p class="text-sm font-medium text-on-surface mt-xxs font-['Inter']">${formatCurrency(r.prize)}</p>
+            </div>
+          </div>
+          ${topHorse ? `
+          <div class="border-t border-hairline-dark pt-sm">
+            <p class="text-muted text-[10px] uppercase tracking-wider mb-xs">AI 評分最高</p>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-xs">
+                <div class="w-5 h-5 rounded bg-surface-elevated-dark flex items-center justify-center text-primary-container text-[10px] font-bold border border-hairline-dark">${topHorse.no}</div>
+                <span class="text-on-surface text-sm font-medium">${topHorse.name}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-trading-up font-bold text-sm font-['Inter']">${calcHorseScore(topHorse, r.horses)}</span>
+                <span class="text-muted text-[10px] ml-xxs">分</span>
+              </div>
+            </div>
+          </div>` : `
+          <div class="border-t border-hairline-dark pt-sm">
+            <p class="text-muted text-[11px] flex items-center gap-xs">
+              <span class="material-symbols-outlined text-[14px]">schedule</span>
+              資料待錄入
+            </p>
+          </div>`}
+        </div>
+        <!-- Card Footer -->
+        <div class="border-t border-hairline-dark px-lg py-sm flex items-center justify-between">
+          <div class="flex gap-sm">
+            <a href="race.html?id=${r.id}" onclick="event.stopPropagation()" class="text-muted hover:text-primary-container text-[11px] flex items-center gap-xxs transition-colors">
+              <span class="material-symbols-outlined text-[14px]">table_view</span>賽事詳情
+            </a>
+            ${hasData ? `<a href="analysis.html?id=${r.id}" onclick="event.stopPropagation()" class="text-muted hover:text-trading-up text-[11px] flex items-center gap-xxs transition-colors">
+              <span class="material-symbols-outlined text-[14px]">psychology</span>AI 分析
+            </a>` : ''}
+          </div>
+          <span class="material-symbols-outlined text-muted group-hover:text-primary-container transition-colors text-[18px]">arrow_forward</span>
+        </div>
+      </div>`;
+    });
+  } // end renderDashboard
+
+  // Boot: load from API, fall back to sample data
+  initWithAPI(renderDashboard);
+
+  // Poll until races are loaded (handles startup delay while scraper runs)
+  let _pollTimer = null;
+  async function pollUntilReady() {
+    try {
+      const status = await apiGetStatus();
+      if (!status.fetching) {
+        const races = await apiGetRaces();
+        if (races && races.length > 0) {
+          const meta = await apiGetRaceDay();
+          renderDashboard(meta, races);
+          return; // data loaded, stop polling
+        }
+      }
+    } catch (_) {}
+    _pollTimer = setTimeout(pollUntilReady, 5000); // retry every 5s
+  }
+
+  // Start polling only if currently no data
+  apiGetRaces().then(races => {
+    if (!races || races.length === 0) pollUntilReady();
+  });
+</script>
+</body>
+</html>
