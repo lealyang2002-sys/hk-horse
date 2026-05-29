@@ -391,6 +391,60 @@ strengths 2–4條，weaknesses 1–3條。"""
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/voice-qa", methods=["POST"])
+def api_voice_qa():
+    """Answer a user's voice question about a race using Claude."""
+    body     = request.get_json(force=True)
+    race_id  = body.get("raceId")
+    question = (body.get("question") or "").strip()
+
+    if not question:
+        return jsonify({"ok": False, "error": "問題不能為空"}), 400
+
+    race = _get_race(race_id) if race_id else None
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"ok": False, "error": "ANTHROPIC_API_KEY not set"}), 503
+
+    # Build race context (condensed)
+    if race and race.get("horses"):
+        horse_lines = "\n".join(
+            f"#{h['no']} {h['name']} 騎師:{h.get('jockey','—')} "
+            f"近6績:{'/'.join(str(x) for x in h.get('recentForm',[]))} "
+            f"賠率:{h.get('winOdds','—')} 官方評分:{h.get('rating','—')}"
+            for h in race["horses"]
+        )
+        context = (
+            f"你是資深香港賽馬分析師，為VIP客戶即時解答問題。\n\n"
+            f"當前賽事：第{race_id}場 {race.get('name','')}，"
+            f"{race.get('distance','')}米{race.get('trackType','')}，"
+            f"{race.get('condition','')}場地。\n\n"
+            f"參賽馬匹：\n{horse_lines}\n\n"
+            f"用戶問題：{question}\n\n"
+            f"請用2至4句簡潔的繁體中文回答，聚焦最關鍵的分析要點，語氣專業自然。"
+        )
+    else:
+        context = (
+            f"你是資深香港賽馬分析師，為VIP客戶即時解答問題。\n"
+            f"用戶問題：{question}\n\n"
+            f"請用2至4句簡潔的繁體中文回答。"
+        )
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            temperature=0.7,
+            messages=[{"role": "user", "content": context}],
+        )
+        answer = msg.content[0].text.strip()
+        return jsonify({"ok": True, "answer": answer})
+    except Exception as e:
+        print(f"[Claude] Voice QA error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/admin/export")
 def api_export():
     """Download full race day JSON."""
