@@ -7,6 +7,8 @@ Open: http://localhost:8080
 import json
 import os
 import threading
+import copy
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, date
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -15,9 +17,25 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import anthropic
 
+try:
+    from dateutil.parser import parse as _parse_dt
+except ImportError:
+    _parse_dt = None
+
 load_dotenv()
 
 import fetcher as F
+
+# Anthropic singleton — created once, reused across all requests
+_anthropic_client: anthropic.Anthropic | None = None
+
+def _get_anthropic_client() -> anthropic.Anthropic | None:
+    global _anthropic_client
+    if _anthropic_client is None:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if api_key:
+            _anthropic_client = anthropic.Anthropic(api_key=api_key)
+    return _anthropic_client
 
 # ------------------------------------------------------------------ #
 # App setup
@@ -61,7 +79,7 @@ def _get_race(race_id: int) -> dict | None:
 # ------------------------------------------------------------------ #
 # Fetch logic (runs on startup + schedule + manual trigger)
 # ------------------------------------------------------------------ #
-def _do_fetch(race_date: str = None, venue: str = None):
+def _do_fetch(race_date: str = None, venue: str = None, force: bool = False):
     with _lock:
         if _state["fetching"]:
             return
@@ -72,11 +90,8 @@ def _do_fetch(race_date: str = None, venue: str = None):
 
         # Build candidate list
         if race_date:
-            # Explicit date: trust the caller
             candidates = [{"date": race_date, "venue": venue or "ST"}]
         else:
-            # Auto-detect: all race weekdays in the next 10 days
-            # (covers cases where Sat has no race but Sun does, etc.)
             candidates = F.get_upcoming_race_days(from_date=today, days_ahead=10)
             if not candidates:
                 candidates = [{"date": today, "venue": venue or "ST"}]
@@ -85,8 +100,23 @@ def _do_fetch(race_date: str = None, venue: str = None):
             t_date  = candidate["date"]
             t_venue = candidate["venue"]
 
-            # 1. Cache check (instant)
-            cached = F.load_cached(t_date, t_venue)
+            # 1. Cache check (skip if force=True, or cache is stale >4h)
+            cached = None
+            if not force:
+                cached = F.load_cached(t_date, t_venue)
+                if cached:
+                    fetched_at = cached.get("_fetched_at", "")
+                    if _parse_dt:
+                        try:
+                            age_hours = (datetime.now() - _parse_dt(fetched_at)).total_seconds() / 3600
+                            if age_hours > 4:
+                                print(f"[Server] Cache stale ({age_hours:.1f}h), re-fetching {t_date} {t_venue}")
+                                cached = None
+                        except Exception:
+                            pass
+            else:
+                print(f"[Server] Force refresh: skipping cache for {t_date} {t_venue}")
+
             if cached:
                 total = sum(len(r.get("horses", [])) for r in cached.get("races", []))
                 if total > 0:
@@ -105,9 +135,14 @@ def _do_fetch(race_date: str = None, venue: str = None):
                 print(f"[Server] No entries yet for {t_date}, skipping...")
                 continue
 
-            # 3. Full fetch — entries confirmed, scrape all races
+            # 3. Full fetch — entries confirmed, scrape all races (5 min hard cap)
             print(f"[Server] Full fetch: {t_date} {t_venue}")
-            data = F.fetch_full_day(t_date, t_venue)
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                fut = ex.submit(F.fetch_full_day, t_date, t_venue)
+                try:
+                    data = fut.result(timeout=300)
+                except FuturesTimeoutError:
+                    raise RuntimeError("全量抓取超時（5分鐘），請稍後重試")
             total = sum(len(r.get("horses", [])) for r in data.get("races", []))
 
             if total > 0:
@@ -136,6 +171,23 @@ def _do_fetch(race_date: str = None, venue: str = None):
     finally:
         with _lock:
             _state["fetching"] = False
+
+
+def _preload_cache():
+    """Instantly load the most recent valid cache so the page is not empty on startup."""
+    today = date.today().strftime("%Y-%m-%d")
+    candidates = F.get_upcoming_race_days(from_date=today, days_ahead=10)
+    for c in candidates:
+        cached = F.load_cached(c["date"], c["venue"])
+        if cached and sum(len(r.get("horses", [])) for r in cached.get("races", [])) > 0:
+            with _lock:
+                _state["data"]       = cached
+                _state["race_date"]  = c["date"]
+                _state["venue"]      = c["venue"]
+                _state["last_fetch"] = cached.get("_fetched_at", "cached")
+            print(f"[Server] Pre-loaded cache: {c['date']} {c['venue']} (will force-refresh)")
+            return
+    print("[Server] No valid cache found, waiting for background fetch...")
 
 
 def _sample_fallback() -> dict:
@@ -250,16 +302,17 @@ def api_odds(race_id):
 
 @app.route("/api/fetch", methods=["POST"])
 def api_fetch():
-    """Manually trigger a data refresh. Body: { "date": "YYYY-MM-DD", "venue": "ST" }"""
-    body        = request.get_json(silent=True) or {}
-    race_date   = body.get("date")
-    venue       = body.get("venue")
+    """Manually trigger a data refresh. Body: { "date": "YYYY-MM-DD", "venue": "ST", "force": true }"""
+    body      = request.get_json(silent=True) or {}
+    race_date = body.get("date")
+    venue     = body.get("venue")
+    force     = bool(body.get("force", False))
 
-    # Run in background thread so request returns immediately
-    t = threading.Thread(target=_do_fetch, args=(race_date, venue), daemon=True)
+    t = threading.Thread(target=_do_fetch, args=(race_date, venue, force), daemon=True)
     t.start()
 
-    return jsonify({"ok": True, "message": "資料抓取已啟動，請稍後刷新。"})
+    msg = "強制重新抓取已啟動，請稍後刷新。" if force else "資料抓取已啟動，請稍後刷新。"
+    return jsonify({"ok": True, "message": msg})
 
 
 @app.route("/api/admin/race/<int:race_id>", methods=["PATCH"])
@@ -284,6 +337,7 @@ def api_admin_set_horses(race_id):
     horses = request.get_json(silent=True)
     if not isinstance(horses, list):
         return jsonify({"error": "Expected JSON array"}), 400
+    snapshot = None
     with _lock:
         if not _state["data"]:
             return jsonify({"error": "No data loaded"}), 503
@@ -291,9 +345,10 @@ def api_admin_set_horses(race_id):
         if not race:
             return jsonify({"error": "Not found"}), 404
         race["horses"] = horses
-    # Persist override to cache
-    meta = _get_meta()
-    F.save_cache(_state["data"], meta.get("date",""), meta.get("venueCode","ST"))
+        snapshot = copy.deepcopy(_state["data"])
+    # Persist outside lock using a local snapshot — safe from concurrent state changes
+    meta = snapshot.get("meta", {})
+    F.save_cache(snapshot, meta.get("date", ""), meta.get("venueCode", "ST"))
     return jsonify({"ok": True, "count": len(horses)})
 
 
@@ -308,8 +363,8 @@ def api_analysis(race_id):
     if not horses:
         return jsonify({"error": "No horses"}), 400
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    client = _get_anthropic_client()
+    if not client:
         return jsonify({"error": "ANTHROPIC_API_KEY not set"}), 503
 
     # Build prompt
@@ -359,7 +414,6 @@ def api_analysis(race_id):
 strengths 2–4條，weaknesses 1–3條。"""
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=4096,
@@ -391,6 +445,34 @@ strengths 2–4條，weaknesses 1–3條。"""
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/voice-chat", methods=["POST"])
+def api_voice_chat():
+    """Receive raw PCM (16 kHz / 16-bit / mono), return OGG/Opus audio."""
+    import volcano_client as vc
+
+    app_id  = os.environ.get("VOLCANO_APP_ID")
+    api_key = os.environ.get("VOLCANO_API_KEY")
+    if not app_id or not api_key:
+        return jsonify({"error": "VOLCANO_APP_ID / VOLCANO_API_KEY not configured"}), 503
+
+    pcm = request.data
+    if not pcm:
+        return jsonify({"error": "Empty audio payload"}), 400
+
+    try:
+        audio = vc.volcano_chat_sync(pcm, app_id, api_key)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[Volcano] Error: {type(e).__name__}: {e}")
+        return jsonify({"error": f"{type(e).__name__}: {e}"}), 500
+
+    if not audio:
+        return jsonify({"error": "未能識別語音，請重新嘗試"}), 400
+
+    return app.response_class(response=audio, status=200, mimetype="audio/ogg")
+
+
 @app.route("/api/admin/export")
 def api_export():
     """Download full race day JSON."""
@@ -410,9 +492,12 @@ def api_export():
 # ------------------------------------------------------------------ #
 def start_scheduler():
     sched = BackgroundScheduler(daemon=True)
-    # Refresh every 15 minutes during race hours (17:00–23:30)
-    sched.add_job(_do_fetch, "cron", hour="17-23", minute="*/15",
-                  id="auto_fetch", replace_existing=True)
+    # Race hours: force-fetch every 15 min to keep odds current
+    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="17-23", minute="*/15",
+                  id="race_hours_fetch", replace_existing=True)
+    # Daytime: force-fetch every 2 hours to pick up new entries / schedule changes
+    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="8,10,12,14,16", minute="0",
+                  id="daytime_fetch", replace_existing=True)
     sched.start()
     return sched
 
@@ -437,8 +522,11 @@ if __name__ == "__main__":
         _state["data"] = _sample_fallback()
         print("[Server] Skipping fetch, using cached/sample data")
     else:
-        print("[Server] Initial data fetch (background)...")
-        t = threading.Thread(target=_do_fetch, args=(args.date, args.venue), daemon=True)
+        # Step 1: pre-load cache so the page is not empty while fetching
+        _preload_cache()
+        # Step 2: always force-refresh from HKJC in background for latest data
+        print("[Server] Background force-refresh started...")
+        t = threading.Thread(target=_do_fetch, args=(args.date, args.venue, True), daemon=True)
         t.start()
 
     sched = start_scheduler()

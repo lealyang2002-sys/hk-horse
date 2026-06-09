@@ -88,6 +88,72 @@ def _fmt_date(race_date: str) -> str:
 
 
 # ------------------------------------------------------------------ #
+# Odds fetching via Playwright (HKJC GraphQL requires browser session)
+# ------------------------------------------------------------------ #
+def _fetch_all_odds(race_date: str, venue: str) -> dict[str, dict]:
+    """
+    Fetch win odds per runner by intercepting the HKJC GraphQL response
+    that the bet.hkjc.com WP odds page loads automatically.
+    Returns {race_no_str: {horse_no_str: {"win": float, "place": None}}}
+    Returns {} when odds are not yet published or on any error.
+    """
+    if not HAS_PLAYWRIGHT:
+        return {}
+
+    result: dict[str, dict] = {}
+
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=["--no-sandbox"])
+            ctx = browser.new_context(
+                locale="zh-TW", user_agent=_UA,
+                viewport={"width": 1280, "height": 900},
+            )
+            page = ctx.new_page()
+
+            def on_response(response):
+                if "graphql" not in response.url:
+                    return
+                try:
+                    data = response.json()
+                    meetings = (data.get("data") or {}).get("raceMeetings") or []
+                    for m in meetings:
+                        if not m:
+                            continue
+                        if m.get("date") != race_date or m.get("venueCode") != venue:
+                            continue
+                        for race in m.get("races") or []:
+                            rn = str(race.get("no", ""))
+                            if not rn:
+                                continue
+                            horses: dict[str, dict] = {}
+                            for runner in race.get("runners") or []:
+                                hn = str(runner.get("no", ""))
+                                win = _float_or_none(runner.get("winOdds"))
+                                if hn and win:
+                                    horses[hn] = {"win": win, "place": None}
+                            if horses:
+                                result[rn] = horses
+                except Exception:
+                    pass
+
+            page.on("response", on_response)
+            url = f"https://bet.hkjc.com/en/racing/odds_wp/{race_date}/{venue}/1"
+            print(f"[Fetcher] Fetching odds from {url}")
+            page.goto(url, wait_until="networkidle", timeout=60000)
+            page.wait_for_timeout(3000)
+            browser.close()
+
+    except Exception as e:
+        print(f"[Fetcher] Odds fetch error: {e}")
+        return {}
+
+    total = sum(len(v) for v in result.values())
+    print(f"[Fetcher] Odds: {len(result)} races, {total} horses with win odds")
+    return result
+
+
+# ------------------------------------------------------------------ #
 # Get next race day from HKJC API (POST, needs no browser)
 # ------------------------------------------------------------------ #
 def _fetch_generalinfo_json() -> dict | None:
@@ -135,13 +201,14 @@ def get_upcoming_race_days(from_date: str = None, days_ahead: int = 10) -> list[
         if results:
             return results
 
-    # Heuristic fallback: all Wed/Sat/Sun in window
-    RACE_WEEKDAYS = {2, 5, 6}
+    # Heuristic fallback: Wed=HV, Sat/Sun=ST (standard HKJC pattern)
+    RACE_WEEKDAY_VENUE = {2: "HV", 5: "ST", 6: "ST"}
     start = datetime.strptime(start_str, "%Y-%m-%d").date()
     return [
-        {"date": (start + timedelta(days=i)).strftime("%Y-%m-%d"), "venue": "ST"}
+        {"date": (start + timedelta(days=i)).strftime("%Y-%m-%d"),
+         "venue": RACE_WEEKDAY_VENUE[(start + timedelta(days=i)).weekday()]}
         for i in range(days_ahead + 1)
-        if (start + timedelta(days=i)).weekday() in RACE_WEEKDAYS
+        if (start + timedelta(days=i)).weekday() in RACE_WEEKDAY_VENUE
     ]
 
 
@@ -404,6 +471,17 @@ def fetch_full_day(race_date: str = None, venue: str = None) -> dict:
             races_raw.append(_fetch_one_race(page, race_date, venue, n))
 
         browser.close()
+
+    # Merge in odds (separate API call, no browser needed)
+    odds_map = _fetch_all_odds(race_date, venue)
+    if odds_map:
+        for race in races_raw:
+            rn = str(race["id"])
+            race_odds = odds_map.get(rn, {})
+            for h in race.get("horses", []):
+                ho = race_odds.get(str(h["no"]), {})
+                h["winOdds"]   = ho.get("win")
+                h["placeOdds"] = ho.get("place")
 
     return _build_envelope(races_raw, race_date, venue)
 

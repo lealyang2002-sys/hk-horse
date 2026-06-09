@@ -106,9 +106,29 @@
         <p class="text-muted text-[14px] mt-xs" id="venue-info"></p>
       </div>
       <!-- Next Race Countdown -->
-      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl px-lg py-md flex flex-col items-end gap-xs">
+      <div class="bg-surface-card-dark border border-hairline-dark rounded-xl px-lg py-md flex flex-col items-end gap-sm">
         <span class="text-muted text-xs uppercase tracking-wider">首場開賽倒數</span>
-        <div class="text-primary-container font-bold text-2xl font-['Inter'] tracking-wider" id="countdown">--:--:--</div>
+        <div id="countdown" class="flex items-end gap-xs">
+          <div id="cd-days-wrap" class="flex flex-col items-center">
+            <span id="cd-days" class="text-primary-container font-bold text-2xl font-['Inter'] leading-none">—</span>
+            <span class="text-muted text-[10px] mt-[3px]">天</span>
+          </div>
+          <span class="text-muted font-bold text-xl leading-none mb-[14px]">·</span>
+          <div class="flex flex-col items-center">
+            <span id="cd-hours" class="text-on-surface font-bold text-2xl font-['Inter'] leading-none">--</span>
+            <span class="text-muted text-[10px] mt-[3px]">時</span>
+          </div>
+          <span class="text-muted font-bold text-xl leading-none mb-[14px]">:</span>
+          <div class="flex flex-col items-center">
+            <span id="cd-mins" class="text-on-surface font-bold text-2xl font-['Inter'] leading-none">--</span>
+            <span class="text-muted text-[10px] mt-[3px]">分</span>
+          </div>
+          <span class="text-muted font-bold text-xl leading-none mb-[14px]">:</span>
+          <div class="flex flex-col items-center">
+            <span id="cd-secs" class="text-on-surface font-bold text-2xl font-['Inter'] leading-none">--</span>
+            <span class="text-muted text-[10px] mt-[3px]">秒</span>
+          </div>
+        </div>
         <span class="text-muted text-xs" id="first-race-label"></span>
       </div>
     </div>
@@ -166,7 +186,7 @@
 
     // Countdown
     if (meta.firstRaceTime && meta.firstRaceTime !== '—') {
-      startCountdown(meta.firstRaceTime, 'countdown');
+      startCountdown(meta.date, meta.firstRaceTime, 'countdown');
     }
 
     // Grade label color
@@ -279,5 +299,6 @@
     if (!races || races.length === 0) pollUntilReady();
   });
 </script>
+<script src="js/voice-widget.js"></script>
 </body>
 </html>

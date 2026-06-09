@@ -80,11 +80,17 @@
         <h2 class="text-[40px] font-bold leading-tight text-on-surface tracking-tight">數據控制台</h2>
         <p class="text-muted text-[14px] mt-xs">自動抓取 · 緩存管理 · 賠率覆蓋</p>
       </div>
-      <div class="flex gap-sm">
-        <button onclick="triggerFetch()" id="fetch-btn"
+      <div class="flex gap-sm flex-wrap">
+        <button onclick="triggerFetch(false)" id="fetch-btn"
                 class="bg-primary-container text-ink font-semibold text-sm px-lg py-sm rounded hover:bg-primary-active transition-colors flex items-center gap-xs">
           <span class="material-symbols-outlined text-[18px]" id="fetch-icon">sync</span>
           立即抓取馬會資料
+        </button>
+        <button onclick="triggerFetch(true)"
+                class="bg-trading-down/20 border border-trading-down/40 text-trading-down font-semibold text-sm px-lg py-sm rounded hover:bg-trading-down/30 transition-colors flex items-center gap-xs"
+                title="忽略快取，強制重新從馬會網站抓取最新資料（賠率更新後使用）">
+          <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+          強制刷新（忽略快取）
         </button>
         <a href="/api/admin/export" class="bg-surface-elevated-dark border border-hairline-dark text-on-surface text-sm px-md py-sm rounded hover:bg-surface-container transition-colors flex items-center gap-xs">
           <span class="material-symbols-outlined text-[18px]">download</span>匯出 JSON
@@ -334,22 +340,25 @@
   }
 
   // ---- Fetch trigger -----------------------------------------------
-  async function triggerFetch(useForm = false) {
+  async function triggerFetch(force = false) {
     const btn  = document.getElementById('fetch-btn');
     const icon = document.getElementById('fetch-icon');
     btn.disabled  = true;
     icon.textContent = 'progress_activity';
     icon.classList.add('animate-spin');
-    addLog('正在抓取馬會公開資料…', 'info');
+    addLog(force ? '強制刷新：忽略快取，重新從馬會網站抓取…' : '正在抓取馬會公開資料…', 'info');
 
-    const raceDate = useForm ? document.getElementById('fetch-date').value || null : null;
-    const venue    = useForm ? document.getElementById('fetch-venue').value || null : null;
+    const raceDate = document.getElementById('fetch-date').value || null;
+    const venue    = document.getElementById('fetch-venue').value || null;
 
     try {
-      const res = await apiTriggerFetch(raceDate, venue);
+      const res = await fetch('/api/fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: raceDate, venue, force }),
+      }).then(r => r.json());
       showToast(res.message || '抓取請求已發送');
       addLog('抓取請求已發送，後台處理中…', 'ok');
-      // Poll status after 5 seconds
       setTimeout(loadStatus, 5000);
     } catch (e) {
       showToast('抓取失敗 — ' + e.message, false);
@@ -426,5 +435,6 @@
   loadStatus();
   setInterval(loadStatus, 30000); // refresh status every 30s
 </script>
+<script src="js/voice-widget.js"></script>
 </body>
 </html>

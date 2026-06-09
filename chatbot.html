@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-HK">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>語音助手 — CMHK VIP 賽馬智能分析</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode:"class",
+    theme:{ extend:{ colors:{
+      "primary-container":"#fcd535","primary":"#fff4d7","primary-active":"#f0b90b",
+      "canvas-dark":"#0b0e11","surface-card-dark":"#1e2329","surface-elevated-dark":"#2b3139",
+      "surface-container":"#231f15","on-surface":"#eae2d1","on-surface-variant":"#d0c6ad",
+      "muted":"#707a8a","hairline-dark":"#2b3139","outline":"#999079",
+      "trading-up":"#0ecb81","trading-down":"#f6465d","secondary":"#3fe397",
+      "ink":"#181a20","error":"#ffb4ab","info":"#3b82f6",
+    }, spacing:{ xs:"8px", xl:"32px", lg:"24px", sm:"12px", xxs:"4px", md:"16px" },
+    borderRadius:{ DEFAULT:"0.125rem", lg:"0.25rem", xl:"0.5rem", full:"0.75rem" },
+    fontSize:{
+      "title-md":["20px",{lineHeight:"1.35",fontWeight:"600"}],
+      "number-md":["16px",{lineHeight:"1.4",fontWeight:"500"}],
+      "body-md":["14px",{lineHeight:"1.5",fontWeight:"400"}],
+      "button":["14px",{lineHeight:"1",fontWeight:"600"}],
+    }
+    }}
+  };
+</script>
+<style>
+  /* Pulse ring animation when recording */
+  @keyframes pulse-ring {
+    0%   { transform: scale(1);   opacity: .6; }
+    100% { transform: scale(1.7); opacity: 0;  }
+  }
+  .pulse-ring::before,
+  .pulse-ring::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #fcd535;
+    animation: pulse-ring 1.2s ease-out infinite;
+  }
+  .pulse-ring::after { animation-delay: .4s; }
+
+  /* Wave bars animation */
+  @keyframes wave {
+    0%, 100% { transform: scaleY(.3); }
+    50%       { transform: scaleY(1);  }
+  }
+  .wave-bar { animation: wave 1s ease-in-out infinite; }
+  .wave-bar:nth-child(2) { animation-delay: .1s; }
+  .wave-bar:nth-child(3) { animation-delay: .2s; }
+  .wave-bar:nth-child(4) { animation-delay: .3s; }
+  .wave-bar:nth-child(5) { animation-delay: .2s; }
+  .wave-bar:nth-child(6) { animation-delay: .1s; }
+  .wave-bar:nth-child(7) { animation-delay: .0s; }
+
+  /* Thinking dots */
+  @keyframes dot-blink {
+    0%, 80%, 100% { opacity: 0; }
+    40%           { opacity: 1; }
+  }
+  .dot { animation: dot-blink 1.4s ease-in-out infinite; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; }
+</style>
+</head>
+<body class="bg-canvas-dark text-on-surface text-[14px] leading-relaxed h-screen overflow-hidden flex flex-col md:flex-row">
+
+<!-- Sidebar -->
+<nav class="hidden md:flex flex-col bg-[#181a20] text-[#FCD535] font-['Work_Sans'] text-xs uppercase font-bold tracking-widest fixed left-0 top-0 h-full w-64 border-r border-[#2b3139] z-[90]">
+  <div class="p-lg border-b border-hairline-dark">
+    <h1 class="text-[#FCD535] font-black text-[20px] tracking-tighter uppercase mb-xxs">VIP Terminal</h1>
+    <p class="text-muted text-xs normal-case font-normal tracking-normal">CMHK 賽馬智能分析系統</p>
+  </div>
+  <div class="flex-1 overflow-y-auto py-md flex flex-col gap-xs">
+    <a data-nav="index.html"    href="index.html"         class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">dashboard</span>今日賽事</a>
+    <a data-nav="race.html"     href="race.html?id=1"     class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">monitoring</span>賽事詳情</a>
+    <a data-nav="analysis.html" href="analysis.html?id=1" class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">psychology</span>智能分析</a>
+    <a data-nav="odds.html"     href="odds.html?id=1"     class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">bar_chart</span>賠率總覽</a>
+    <a data-nav="chatbot.html"  href="chatbot.html"        class="text-[#FCD535] bg-[#2b3139] px-4 py-3 flex items-center gap-3 transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">record_voice_over</span>語音助手</a>
+    <a data-nav="admin.html"    href="admin.html"          class="text-gray-500 hover:text-gray-200 px-4 py-3 flex items-center gap-3 hover:bg-[#2b3139] transition-all cursor-pointer"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">database</span>後台管理</a>
+  </div>
+  <div class="p-md border-t border-hairline-dark mt-auto">
+    <div class="flex items-center gap-sm px-4 mb-md">
+      <div class="w-8 h-8 rounded-full bg-primary-container/20 border border-primary-container/30 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary-container text-[16px]" style="font-variation-settings:'FILL' 1;">person</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-on-surface text-xs font-medium normal-case tracking-normal" data-user-name>—</span>
+        <span class="text-muted text-[10px] normal-case tracking-normal" data-user-role>—</span>
+      </div>
+    </div>
+    <button onclick="logout()" class="w-full text-muted hover:text-on-surface font-semibold text-xs py-sm border border-hairline-dark rounded hover:bg-surface-elevated-dark transition-all normal-case tracking-normal">登出系統</button>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="flex-1 md:ml-64 h-full overflow-hidden flex flex-col">
+
+  <!-- Header -->
+  <header class="flex justify-between items-center h-[64px] px-lg border-b border-hairline-dark bg-canvas-dark shrink-0">
+    <div class="flex items-center gap-sm">
+      <span class="material-symbols-outlined text-primary-container" style="font-variation-settings:'FILL' 1;">record_voice_over</span>
+      <div>
+        <h2 class="text-on-surface font-bold text-[16px] leading-tight">語音助手</h2>
+        <p class="text-muted text-[11px]">豆包 AI · 語音問答</p>
+      </div>
+    </div>
+    <button id="clear-btn" onclick="clearHistory()" class="text-muted hover:text-on-surface text-xs flex items-center gap-xxs transition-colors">
+      <span class="material-symbols-outlined text-[16px]">delete_sweep</span>清除記錄
+    </button>
+  </header>
+
+  <!-- Conversation history -->
+  <div id="history" class="flex-1 overflow-y-auto px-lg py-md flex flex-col gap-md">
+    <!-- Welcome message -->
+    <div class="flex flex-col items-center justify-center flex-1 gap-md text-center" id="empty-state">
+      <div class="w-16 h-16 rounded-full bg-surface-card-dark border border-hairline-dark flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary-container text-[32px]" style="font-variation-settings:'FILL' 1;">record_voice_over</span>
+      </div>
+      <div>
+        <p class="text-on-surface font-semibold text-[16px]">賽馬AI語音助手</p>
+        <p class="text-muted text-[13px] mt-xxs">按住下方按鈕說話，鬆開後 AI 即時回覆</p>
+      </div>
+      <div class="flex flex-col gap-xxs text-muted text-[12px]">
+        <p>💡 試試問：「今日第三場推薦哪匹馬？」</p>
+        <p>💡 試試問：「如何分析賽馬賠率？」</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="shrink-0 border-t border-hairline-dark bg-[#181a20] px-lg py-lg flex flex-col items-center gap-md">
+
+    <!-- Status text -->
+    <div id="status-text" class="text-muted text-[13px] h-5 flex items-center gap-xs">
+      <span id="status-label">按住說話</span>
+    </div>
+
+    <!-- Wave visualization (hidden unless recording) -->
+    <div id="wave-vis" class="hidden items-center gap-[3px] h-8">
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+      <div class="wave-bar w-[3px] h-full bg-primary-container/80 rounded-full origin-bottom"></div>
+    </div>
+
+    <!-- Push-to-talk button -->
+    <div class="relative flex items-center justify-center">
+      <button
+        id="ptt-btn"
+        class="relative w-20 h-20 rounded-full bg-primary-container text-ink flex items-center justify-center shadow-lg select-none touch-none transition-all duration-150 active:scale-95 focus:outline-none"
+        style="font-variation-settings:'FILL' 1;"
+      >
+        <span id="btn-icon" class="material-symbols-outlined text-[36px]">mic</span>
+      </button>
+    </div>
+
+    <p class="text-[11px] text-muted">Chrome / Firefox 支援 · 需要麥克風權限</p>
+  </div>
+
+</main>
+
+<script>
+// ── Auth guard ──────────────────────────────────────────────────────────────
+(function() {
+  const u = JSON.parse(sessionStorage.getItem('cmhk_auth_user') || 'null');
+  if (!u) { location.href = 'login.html'; return; }
+  document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = u.name || u.username);
+  document.querySelectorAll('[data-user-role]').forEach(el => el.textContent = u.role || 'VIP 會員');
+})();
+function logout() { sessionStorage.removeItem('cmhk_user'); location.href = 'login.html'; }
+
+// ── State ───────────────────────────────────────────────────────────────────
+let audioCtx = null;
+let mediaStream = null;
+let scriptProcessor = null;
+let silentGain = null;
+let pcmChunks = [];
+let isRecording = false;
+let isBusy = false;   // processing / playing
+let currentAudio = null;
+
+const pttBtn   = document.getElementById('ptt-btn');
+const btnIcon  = document.getElementById('btn-icon');
+const statusLabel = document.getElementById('status-label');
+const waveVis  = document.getElementById('wave-vis');
+const history  = document.getElementById('history');
+const emptyState = document.getElementById('empty-state');
+
+// ── UI helpers ──────────────────────────────────────────────────────────────
+function setStatus(state, msg) {
+  waveVis.classList.add('hidden');
+  waveVis.classList.remove('flex');
+
+  if (state === 'idle') {
+    statusLabel.textContent = '按住說話';
+    btnIcon.textContent = 'mic';
+    pttBtn.style.background = '';
+    pttBtn.classList.remove('pulse-ring');
+  } else if (state === 'recording') {
+    statusLabel.textContent = '錄音中 — 鬆開發送';
+    btnIcon.textContent = 'stop';
+    pttBtn.style.background = '#f6465d';
+    pttBtn.classList.add('pulse-ring');
+    waveVis.classList.remove('hidden');
+    waveVis.classList.add('flex');
+  } else if (state === 'thinking') {
+    statusLabel.innerHTML = 'AI 思考中 <span class="dot">·</span><span class="dot">·</span><span class="dot">·</span>';
+    btnIcon.textContent = 'hourglass_empty';
+    pttBtn.style.background = '#2b3139';
+    pttBtn.classList.remove('pulse-ring');
+  } else if (state === 'playing') {
+    statusLabel.textContent = 'AI 回覆播放中';
+    btnIcon.textContent = 'volume_up';
+    pttBtn.style.background = '#0ecb81';
+    pttBtn.classList.remove('pulse-ring');
+  } else if (state === 'error') {
+    statusLabel.textContent = msg || '發生錯誤，請重試';
+    btnIcon.textContent = 'mic';
+    pttBtn.style.background = '';
+    pttBtn.classList.remove('pulse-ring');
+  }
+}
+
+function addBubble(role, content) {
+  emptyState.remove();
+
+  const isUser = role === 'user';
+  const wrap = document.createElement('div');
+  wrap.className = `flex ${isUser ? 'justify-end' : 'justify-start'} items-end gap-sm`;
+
+  if (!isUser) {
+    wrap.innerHTML = `
+      <div class="w-8 h-8 rounded-full bg-primary-container/20 border border-primary-container/30 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-primary-container text-[14px]" style="font-variation-settings:'FILL' 1;">smart_toy</span>
+      </div>`;
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = isUser
+    ? 'max-w-xs bg-primary-container/20 border border-primary-container/30 text-on-surface rounded-xl rounded-br-sm px-md py-sm'
+    : 'max-w-xs bg-surface-card-dark border border-hairline-dark text-on-surface rounded-xl rounded-bl-sm px-md py-sm';
+
+  bubble.innerHTML = content;
+  wrap.appendChild(bubble);
+
+  if (isUser) {
+    wrap.innerHTML += `
+      <div class="w-8 h-8 rounded-full bg-primary-container/20 border border-primary-container/30 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-primary-container text-[14px]" style="font-variation-settings:'FILL' 1;">person</span>
+      </div>`;
+  }
+
+  history.appendChild(wrap);
+  history.scrollTop = history.scrollHeight;
+  return bubble;
+}
+
+function clearHistory() {
+  history.innerHTML = `
+    <div class="flex flex-col items-center justify-center flex-1 gap-md text-center" id="empty-state">
+      <div class="w-16 h-16 rounded-full bg-surface-card-dark border border-hairline-dark flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary-container text-[32px]" style="font-variation-settings:'FILL' 1;">record_voice_over</span>
+      </div>
+      <div>
+        <p class="text-on-surface font-semibold text-[16px]">賽馬AI語音助手</p>
+        <p class="text-muted text-[13px] mt-xxs">按住下方按鈕說話，鬆開後 AI 即時回覆</p>
+      </div>
+    </div>`;
+  setStatus('idle');
+}
+
+function now() {
+  return new Date().toLocaleTimeString('zh-HK', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ── Audio capture ───────────────────────────────────────────────────────────
+async function ensureAudioSetup() {
+  if (!mediaStream) {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
+    });
+  }
+  if (!audioCtx || audioCtx.state === 'closed') {
+    audioCtx = new AudioContext({ sampleRate: 16000 });
+  }
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+}
+
+function startCapture() {
+  pcmChunks = [];
+  isRecording = true;
+
+  const source = audioCtx.createMediaStreamSource(mediaStream);
+  scriptProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+  silentGain = audioCtx.createGain();
+  silentGain.gain.value = 0;
+
+  scriptProcessor.onaudioprocess = (e) => {
+    if (!isRecording) return;
+    const f32 = e.inputBuffer.getChannelData(0);
+    const i16 = new Int16Array(f32.length);
+    for (let i = 0; i < f32.length; i++) {
+      i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
+    }
+    pcmChunks.push(i16.buffer.slice(0));
+  };
+
+  source.connect(scriptProcessor);
+  scriptProcessor.connect(silentGain);
+  silentGain.connect(audioCtx.destination);
+}
+
+function stopCapture() {
+  isRecording = false;
+  if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+  if (silentGain)       { silentGain.disconnect();      silentGain = null; }
+
+  const totalBytes = pcmChunks.reduce((s, b) => s + b.byteLength, 0);
+  if (totalBytes === 0) return null;
+
+  const buf = new Uint8Array(totalBytes);
+  let off = 0;
+  for (const chunk of pcmChunks) {
+    buf.set(new Uint8Array(chunk), off);
+    off += chunk.byteLength;
+  }
+  pcmChunks = [];
+  return buf.buffer;
+}
+
+// ── Push-to-talk logic ──────────────────────────────────────────────────────
+async function onPressStart(e) {
+  e.preventDefault();
+  if (isBusy) {
+    // Allow stopping playback
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; isBusy = false; }
+    return;
+  }
+  try {
+    await ensureAudioSetup();
+  } catch (err) {
+    setStatus('error', '無法存取麥克風：' + err.message);
+    return;
+  }
+  startCapture();
+  setStatus('recording');
+}
+
+async function onPressEnd(e) {
+  e.preventDefault();
+  if (!isRecording) return;
+
+  const pcmBuffer = stopCapture();
+  setStatus('thinking');
+  isBusy = true;
+
+  // Show user bubble
+  addBubble('user', `<div class="flex items-center gap-xs text-[13px]">
+    <span class="material-symbols-outlined text-[16px] text-muted" style="font-variation-settings:'FILL' 0;">mic</span>
+    <span class="text-on-surface-variant">語音訊息</span>
+    <span class="text-muted text-[11px] ml-auto">${now()}</span>
+  </div>`);
+
+  if (!pcmBuffer || pcmBuffer.byteLength < 3200) {
+    setStatus('error', '錄音太短，請重試');
+    isBusy = false;
+    return;
+  }
+
+  // AI thinking bubble
+  const aiBubble = addBubble('ai', `<div class="flex items-center gap-xs text-muted text-[13px]">
+    <span class="dot">·</span><span class="dot">·</span><span class="dot">·</span>
+  </div>`);
+
+  try {
+    const resp = await fetch('/api/voice-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'audio/pcm' },
+      body: pcmBuffer,
+    });
+
+    if (!resp.ok) {
+      let errMsg = 'AI 服務錯誤';
+      try { const j = await resp.json(); errMsg = j.error || errMsg; } catch(_) {}
+      throw new Error(errMsg);
+    }
+
+    const audioBlob = await resp.blob();
+    const url = URL.createObjectURL(audioBlob);
+
+    // Update AI bubble with playback controls
+    aiBubble.innerHTML = `
+      <div class="flex items-center gap-xs text-[13px]">
+        <button onclick="replayAudio('${url}')" class="text-primary-container hover:text-primary-active flex items-center gap-xxs transition-colors">
+          <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1;">play_circle</span>
+          <span>語音回覆</span>
+        </button>
+        <span class="text-muted text-[11px] ml-auto">${now()}</span>
+      </div>`;
+
+    setStatus('playing');
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      currentAudio = null;
+      isBusy = false;
+      setStatus('idle');
+    };
+    audio.onerror = () => {
+      currentAudio = null;
+      isBusy = false;
+      setStatus('error', '音頻播放失敗');
+    };
+    audio.play().catch(err => {
+      isBusy = false;
+      setStatus('error', '播放失敗：' + err.message);
+    });
+
+  } catch (err) {
+    aiBubble.innerHTML = `<div class="flex items-center gap-xs text-[13px] text-error">
+      <span class="material-symbols-outlined text-[16px]">error</span>
+      <span>${err.message}</span>
+    </div>`;
+    isBusy = false;
+    setStatus('error', err.message);
+  }
+}
+
+function replayAudio(url) {
+  if (currentAudio) { currentAudio.pause(); }
+  const audio = new Audio(url);
+  currentAudio = audio;
+  isBusy = true;
+  setStatus('playing');
+  audio.onended = () => { currentAudio = null; isBusy = false; setStatus('idle'); };
+  audio.play().catch(() => { isBusy = false; setStatus('idle'); });
+}
+
+// ── Event listeners ─────────────────────────────────────────────────────────
+pttBtn.addEventListener('mousedown',  onPressStart);
+pttBtn.addEventListener('touchstart', onPressStart, { passive: false });
+pttBtn.addEventListener('mouseup',    onPressEnd);
+pttBtn.addEventListener('touchend',   onPressEnd,   { passive: false });
+pttBtn.addEventListener('mouseleave', (e) => { if (isRecording) onPressEnd(e); });
+
+// Prevent context menu on long press (mobile)
+pttBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+setStatus('idle');
+</script>
+</body>
+</html>

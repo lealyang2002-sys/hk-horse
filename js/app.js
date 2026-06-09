@@ -135,20 +135,28 @@ function activateSidebarLink() {
 }
 
 // ---- Countdown Timer -------------------------------------------
-function startCountdown(targetTime, elementId) {
-  const el = document.getElementById(elementId);
-  if (!el) return;
+function startCountdown(raceDate, targetTime, elementId) {
+  const daysWrap = document.getElementById('cd-days-wrap');
+  const elDays   = document.getElementById('cd-days');
+  const elHours  = document.getElementById('cd-hours');
+  const elMins   = document.getElementById('cd-mins');
+  const elSecs   = document.getElementById('cd-secs');
+  if (!elHours) return;
   function tick() {
-    const now  = new Date();
-    const [h, m] = targetTime.split(':').map(Number);
-    const target = new Date(now);
-    target.setHours(h, m, 0, 0);
-    if (target < now) target.setDate(target.getDate() + 1);
-    const diff = Math.max(0, target - now);
-    const hh = String(Math.floor(diff / 3600000)).padStart(2, '0');
-    const mm = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-    const ss = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-    el.textContent = `${hh}:${mm}:${ss}`;
+    const now = new Date();
+    const [y, mo, d] = raceDate.split('-').map(Number);
+    const [h, m]     = targetTime.split(':').map(Number);
+    const target = new Date(y, mo - 1, d, h, m, 0, 0);
+    const diff   = Math.max(0, target - now);
+    const days   = Math.floor(diff / 86400000);
+    const hh     = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
+    const mm     = String(Math.floor((diff % 3600000)  / 60000)).padStart(2, '0');
+    const ss     = String(Math.floor((diff % 60000)    / 1000)).padStart(2, '0');
+    if (daysWrap) daysWrap.style.display = days > 0 ? '' : 'none';
+    if (elDays)   elDays.textContent  = days;
+    if (elHours)  elHours.textContent = hh;
+    if (elMins)   elMins.textContent  = mm;
+    if (elSecs)   elSecs.textContent  = ss;
   }
   tick(); setInterval(tick, 1000);
 }
