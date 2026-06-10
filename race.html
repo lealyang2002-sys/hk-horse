@@ -124,12 +124,22 @@
         </table>
       </div>
 
-      <!-- Quinella placeholder -->
-      <div id="table-quinella" class="hidden p-xl text-center text-muted">
-        <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">lock</span>
-        <p class="text-sm">連贏賠率資料待錄入</p>
-        <p class="text-xs mt-xs">請在後台管理頁面錄入連贏賠率數據</p>
-        <a href="admin.html" class="inline-block mt-md text-primary-container hover:text-primary-active text-sm transition-colors">前往後台錄入 →</a>
+      <!-- Quinella matrix -->
+      <div id="table-quinella" class="hidden overflow-x-auto p-md">
+        <div id="qin-empty" class="hidden p-xl text-center text-muted">
+          <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">hourglass_empty</span>
+          <p class="text-sm">連贏賠率尚未開放</p>
+        </div>
+        <table id="qin-table" class="hidden text-center border-collapse text-[11px] font-['Inter']">
+          <thead id="qin-thead"></thead>
+          <tbody id="qin-tbody"></tbody>
+        </table>
+        <div class="flex items-center gap-lg mt-sm px-xs">
+          <span class="text-[10px] text-muted">賠率：</span>
+          <span class="flex items-center gap-xxs"><span class="inline-block w-3 h-3 rounded-sm bg-trading-up/30 border border-trading-up/50"></span><span class="text-[10px] text-muted">&lt; 10</span></span>
+          <span class="flex items-center gap-xxs"><span class="inline-block w-3 h-3 rounded-sm bg-primary-container/20 border border-primary-container/40"></span><span class="text-[10px] text-muted">10–30</span></span>
+          <span class="flex items-center gap-xxs"><span class="inline-block w-3 h-3 rounded-sm bg-surface-elevated-dark"></span><span class="text-[10px] text-muted">&gt; 30</span></span>
+        </div>
       </div>
 
       <!-- Forecast placeholder -->
@@ -274,6 +284,9 @@
       resSec.classList.add('hidden');
     }
 
+    // Quinella matrix
+    renderQuinella(race);
+
     // Update tab active state
     document.querySelectorAll('.race-tab').forEach(el => {
       const rid = parseInt(el.dataset.raceId);
@@ -282,6 +295,48 @@
         : 'race-tab flex-shrink-0 bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer';
       el.onclick = () => { window.history.pushState({}, '', `race.html?id=${rid}`); renderRace(rid); };
     });
+  }
+
+  function renderQuinella(race) {
+    const qin     = race.quinella || {};
+    const empty   = document.getElementById('qin-empty');
+    const table   = document.getElementById('qin-table');
+    const thead   = document.getElementById('qin-thead');
+    const tbody   = document.getElementById('qin-tbody');
+
+    if (Object.keys(qin).length === 0) {
+      empty.classList.remove('hidden');
+      table.classList.add('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    table.classList.remove('hidden');
+
+    const horses = (race.horses || []).map(h => h.no).sort((a, b) => a - b);
+
+    // Header row
+    thead.innerHTML = `<tr>
+      <th class="w-8 h-8 bg-canvas-dark sticky left-0 z-10"></th>
+      ${horses.map(h => `<th class="w-10 h-8 text-muted font-semibold">${h}</th>`).join('')}
+    </tr>`;
+
+    // Body rows — upper triangle only
+    tbody.innerHTML = horses.map(h1 => `
+      <tr>
+        <td class="sticky left-0 bg-canvas-dark text-muted font-semibold px-xs py-[3px]">${h1}</td>
+        ${horses.map(h2 => {
+          if (h2 <= h1) return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded"></div></td>`;
+          const key  = `${h1},${h2}`;
+          const odds = qin[key];
+          if (!odds) return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded bg-surface-elevated-dark/30 flex items-center justify-center text-muted/40">—</div></td>`;
+          const bg = odds < 10
+            ? 'bg-trading-up/20 border border-trading-up/40 text-trading-up'
+            : odds < 30
+            ? 'bg-primary-container/15 border border-primary-container/30 text-primary-container'
+            : 'bg-surface-elevated-dark border border-hairline-dark text-muted';
+          return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded ${bg} flex items-center justify-center font-semibold leading-none">${odds}</div></td>`;
+        }).join('')}
+      </tr>`).join('');
   }
 
   function switchOdds(type) {
