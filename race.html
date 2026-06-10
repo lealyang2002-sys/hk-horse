@@ -90,8 +90,8 @@
           <div class="flex gap-xs">
             <button data-odds="winplace" onclick="switchOdds('winplace')" class="odds-tab bg-primary-container text-ink text-xs font-semibold px-md py-xs rounded transition-all">獨贏/位置</button>
             <button data-odds="quinella" onclick="switchOdds('quinella')" class="odds-tab bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">連贏</button>
-            <button data-odds="forecast" onclick="switchOdds('forecast')" class="odds-tab bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">二重彩</button>
-            <button data-odds="tierce"   onclick="switchOdds('tierce')"   class="odds-tab bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">三重彩</button>
+            <button id="tab-forecast" data-odds="forecast" onclick="switchOdds('forecast')" class="odds-tab hidden bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">二重彩</button>
+            <button id="tab-tierce"   data-odds="tierce"   onclick="switchOdds('tierce')"   class="odds-tab hidden bg-surface-elevated-dark text-muted text-xs font-semibold px-md py-xs rounded hover:text-on-surface transition-all">三重彩</button>
           </div>
           <a id="analysis-link" href="#" class="bg-surface-elevated-dark border border-hairline-dark text-on-surface text-xs px-md py-xs rounded hover:bg-primary-container/10 hover:text-primary-container transition-all flex items-center gap-xxs">
             <span class="material-symbols-outlined text-[14px]">psychology</span>AI 分析
@@ -142,20 +142,32 @@
         </div>
       </div>
 
-      <!-- Forecast placeholder -->
-      <div id="table-forecast" class="hidden p-xl text-center text-muted">
-        <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">lock</span>
-        <p class="text-sm">二重彩賠率資料待錄入</p>
-        <p class="text-xs mt-xs">請在後台管理頁面錄入二重彩賠率數據</p>
-        <a href="admin.html" class="inline-block mt-md text-primary-container hover:text-primary-active text-sm transition-colors">前往後台錄入 →</a>
+      <!-- Forecast matrix -->
+      <div id="table-forecast" class="hidden overflow-x-auto p-md">
+        <div id="fct-empty" class="hidden p-xl text-center text-muted">
+          <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">hourglass_empty</span>
+          <p class="text-sm">二重彩賠率尚未開放</p>
+        </div>
+        <table id="fct-table" class="hidden text-center border-collapse text-[11px] font-['Inter']">
+          <thead id="fct-thead"></thead>
+          <tbody id="fct-tbody"></tbody>
+        </table>
+        <p id="fct-note" class="hidden text-[10px] text-muted mt-sm px-xs">列 = 第1名馬號 · 行 = 第2名馬號（順序相關）</p>
+        <div id="fct-legend" class="hidden flex items-center gap-lg mt-xs px-xs">
+          <span class="text-[10px] text-muted">賠率：</span>
+          <span class="flex items-center gap-xxs"><span class="inline-block w-3 h-3 rounded-sm bg-trading-up/30 border border-trading-up/50"></span><span class="text-[10px] text-muted">&lt; 20</span></span>
+          <span class="flex items-center gap-xxs"><span class="inline-block w-3 h-3 rounded-sm bg-primary-container/20 border border-primary-container/40"></span><span class="text-[10px] text-muted">20–60</span></span>
+          <span class="flex items-center gap-xxs"><span class="inline-block w-3 h-3 rounded-sm bg-surface-elevated-dark"></span><span class="text-[10px] text-muted">&gt; 60</span></span>
+        </div>
       </div>
 
-      <!-- Tierce placeholder -->
-      <div id="table-tierce" class="hidden p-xl text-center text-muted">
-        <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">lock</span>
-        <p class="text-sm">三重彩賠率資料待錄入</p>
-        <p class="text-xs mt-xs">請在後台管理頁面錄入三重彩賠率數據</p>
-        <a href="admin.html" class="inline-block mt-md text-primary-container hover:text-primary-active text-sm transition-colors">前往後台錄入 →</a>
+      <!-- Tierce list -->
+      <div id="table-tierce" class="hidden p-md">
+        <div id="tri-empty" class="hidden p-xl text-center text-muted">
+          <span class="material-symbols-outlined text-[48px] block mb-md opacity-30">hourglass_empty</span>
+          <p class="text-sm">三重彩賠率尚未開放</p>
+        </div>
+        <div id="tri-list" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-sm"></div>
       </div>
     </div>
 
@@ -284,8 +296,10 @@
       resSec.classList.add('hidden');
     }
 
-    // Quinella matrix
+    // Quinella / Forecast / Tierce
     renderQuinella(race);
+    renderForecast(race);
+    renderTierce(race);
 
     // Update tab active state
     document.querySelectorAll('.race-tab').forEach(el => {
@@ -337,6 +351,88 @@
           return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded ${bg} flex items-center justify-center font-semibold leading-none">${odds}</div></td>`;
         }).join('')}
       </tr>`).join('');
+  }
+
+  function renderForecast(race) {
+    const fct    = race.forecast || {};
+    const tabBtn = document.getElementById('tab-forecast');
+    const empty  = document.getElementById('fct-empty');
+    const table  = document.getElementById('fct-table');
+    const note   = document.getElementById('fct-note');
+    const legend = document.getElementById('fct-legend');
+    const thead  = document.getElementById('fct-thead');
+    const tbody  = document.getElementById('fct-tbody');
+
+    if (Object.keys(fct).length === 0) {
+      tabBtn.classList.add('hidden');
+      empty.classList.remove('hidden');
+      table.classList.add('hidden');
+      note.classList.add('hidden');
+      legend.classList.add('hidden');
+      return;
+    }
+    tabBtn.classList.remove('hidden');
+    empty.classList.add('hidden');
+    table.classList.remove('hidden');
+    note.classList.remove('hidden');
+    legend.classList.remove('hidden');
+
+    const horses = (race.horses || []).map(h => h.no).sort((a, b) => a - b);
+
+    thead.innerHTML = `<tr>
+      <th class="w-8 h-8 bg-canvas-dark sticky left-0 z-10 text-[9px] text-muted">1st↓ 2nd→</th>
+      ${horses.map(h => `<th class="w-10 h-8 text-muted font-semibold">${h}</th>`).join('')}
+    </tr>`;
+
+    tbody.innerHTML = horses.map(h1 => `
+      <tr>
+        <td class="sticky left-0 bg-canvas-dark text-muted font-semibold px-xs py-[3px]">${h1}</td>
+        ${horses.map(h2 => {
+          if (h1 === h2) return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded bg-canvas-dark"></div></td>`;
+          const odds = fct[`${h1},${h2}`];
+          if (!odds) return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded bg-surface-elevated-dark/30 flex items-center justify-center text-muted/40">—</div></td>`;
+          const bg = odds < 20
+            ? 'bg-trading-up/20 border border-trading-up/40 text-trading-up'
+            : odds < 60
+            ? 'bg-primary-container/15 border border-primary-container/30 text-primary-container'
+            : 'bg-surface-elevated-dark border border-hairline-dark text-muted';
+          return `<td class="px-[2px] py-[3px]"><div class="w-9 h-7 rounded ${bg} flex items-center justify-center font-semibold leading-none">${odds}</div></td>`;
+        }).join('')}
+      </tr>`).join('');
+  }
+
+  function renderTierce(race) {
+    const tri    = race.tierce || {};
+    const tabBtn = document.getElementById('tab-tierce');
+    const empty  = document.getElementById('tri-empty');
+    const list   = document.getElementById('tri-list');
+
+    if (Object.keys(tri).length === 0) {
+      tabBtn.classList.add('hidden');
+      empty.classList.remove('hidden');
+      list.classList.add('hidden');
+      return;
+    }
+    tabBtn.classList.remove('hidden');
+    empty.classList.add('hidden');
+    list.classList.remove('hidden');
+
+    const sorted = Object.entries(tri).sort((a, b) => a[1] - b[1]);
+    list.innerHTML = sorted.map(([combo, odds]) => {
+      const horses = combo.split(',');
+      const bg = odds < 20
+        ? 'border-trading-up/40 bg-trading-up/10'
+        : odds < 50
+        ? 'border-primary-container/30 bg-primary-container/10'
+        : 'border-hairline-dark bg-surface-elevated-dark';
+      const tc = odds < 20 ? 'text-trading-up' : odds < 50 ? 'text-primary-container' : 'text-on-surface';
+      return `<div class="flex items-center justify-between rounded-lg border ${bg} px-md py-sm">
+        <div class="flex gap-xs">
+          ${horses.map(h => `<span class="w-6 h-6 rounded bg-surface-elevated-dark border border-hairline-dark flex items-center justify-center text-[11px] font-bold text-on-surface font-['Inter']">${h}</span>`).join('')}
+        </div>
+        <span class="font-['Inter'] font-bold text-sm ${tc}">${odds}</span>
+      </div>`;
+    }).join('');
   }
 
   function switchOdds(type) {

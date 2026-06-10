@@ -90,20 +90,24 @@ def _fmt_date(race_date: str) -> str:
 # ------------------------------------------------------------------ #
 # Odds fetching via Playwright (HKJC GraphQL requires browser session)
 # ------------------------------------------------------------------ #
-def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict]:
+def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict, dict, dict]:
     """
-    Fetch WIN/PLA and QIN odds via the HKJC WPQ bet page (Quinella tab).
-    That page's GraphQL responses contain WIN, PLA, QIN, and QPL pools.
+    Fetch all per-race odds pools via the HKJC Forecast page (/fct/).
+    That page's GraphQL responses contain WIN, PLA, QIN, FCT, and TRITop pools.
 
     Returns:
       win_place : {race_no: {horse_no: {"win": float|None, "place": float|None}}}
-      quinella  : {race_no: {"h1,h2": float}}  — h1 < h2 (int-sorted, no leading zeros)
+      quinella  : {race_no: {"h1,h2": float}}          — h1 < h2 (int-sorted)
+      forecast  : {race_no: {"h1,h2": float}}          — ordered: h1=1st, h2=2nd
+      tierce    : {race_no: {"h1,h2,h3": float}}       — sorted numerically
     """
     if not HAS_PLAYWRIGHT:
-        return {}, {}
+        return {}, {}, {}, {}
 
-    wp: dict[str, dict] = {}   # WIN / PLA
-    qin: dict[str, dict] = {}  # QIN
+    wp:  dict[str, dict] = {}
+    qin: dict[str, dict] = {}
+    fct: dict[str, dict] = {}
+    tri: dict[str, dict] = {}
 
     def _extract_pools(data: dict):
         meetings = (data.get("data") or {}).get("raceMeetings") or []
@@ -121,9 +125,10 @@ def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict]:
                 if not race_nos:
                     continue
                 rn = str(race_nos[0])
+                nodes = pool.get("oddsNodes") or []
 
                 if ot == "WIN":
-                    for node in (pool.get("oddsNodes") or []):
+                    for node in nodes:
                         raw = node.get("combString") or ""
                         hn = str(int(raw)) if raw.isdigit() else ""
                         odds = _float_or_none(node.get("oddsValue"))
@@ -132,7 +137,7 @@ def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict]:
                             wp[rn][hn]["win"] = odds
 
                 elif ot == "PLA":
-                    for node in (pool.get("oddsNodes") or []):
+                    for node in nodes:
                         raw = node.get("combString") or ""
                         hn = str(int(raw)) if raw.isdigit() else ""
                         odds = _float_or_none(node.get("oddsValue"))
@@ -141,7 +146,7 @@ def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict]:
                             wp[rn][hn]["place"] = odds
 
                 elif ot == "QIN":
-                    for node in (pool.get("oddsNodes") or []):
+                    for node in nodes:
                         parts = (node.get("combString") or "").split(",")
                         if len(parts) == 2 and all(p.strip().isdigit() for p in parts):
                             h1, h2 = sorted(int(p.strip()) for p in parts)
@@ -149,7 +154,25 @@ def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict]:
                             if odds:
                                 qin.setdefault(rn, {})[f"{h1},{h2}"] = odds
 
-            # Fallback: winOdds on runner objects (usually empty, kept for safety)
+                elif ot == "FCT":
+                    for node in nodes:
+                        parts = (node.get("combString") or "").split(",")
+                        if len(parts) == 2 and all(p.strip().isdigit() for p in parts):
+                            h1, h2 = int(parts[0].strip()), int(parts[1].strip())
+                            odds = _float_or_none(node.get("oddsValue"))
+                            if odds:
+                                fct.setdefault(rn, {})[f"{h1},{h2}"] = odds
+
+                elif ot == "TRITop":
+                    for node in nodes:
+                        parts = (node.get("combString") or "").split(",")
+                        if len(parts) == 3 and all(p.strip().isdigit() for p in parts):
+                            key = ",".join(str(x) for x in sorted(int(p.strip()) for p in parts))
+                            odds = _float_or_none(node.get("oddsValue"))
+                            if odds:
+                                tri.setdefault(rn, {})[key] = odds
+
+            # Fallback: winOdds on runner objects (usually empty)
             for race in (m.get("races") or []):
                 rn = str(race.get("no", ""))
                 if not rn:
@@ -181,27 +204,35 @@ def _fetch_all_odds(race_date: str, venue: str) -> tuple[dict, dict]:
 
             page.on("response", on_response)
 
-            # wpq page (Quinella tab) returns WIN + PLA + QIN pools for each race
-            for race_no in range(1, 15):
-                url = f"https://bet.hkjc.com/en/racing/wpq/{race_date}/{venue}/{race_no}"
-                if race_no == 1:
-                    print(f"[Fetcher] Fetching odds (WIN+QIN) from {url} ...")
-                before = len(wp)
-                page.goto(url, wait_until="networkidle", timeout=30000)
-                page.wait_for_timeout(1500)
-                if race_no > 1 and len(wp) == before:
-                    break
+            def _visit_pages(path_prefix: str, sentinel: dict, label: str):
+                """Navigate through each race URL; stop when no new data arrives."""
+                for race_no in range(1, 15):
+                    url = f"https://bet.hkjc.com/en/racing/{path_prefix}/{race_date}/{venue}/{race_no}"
+                    if race_no == 1:
+                        print(f"[Fetcher] {label}: {url} ...")
+                    before = len(sentinel)
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                    page.wait_for_timeout(1500)
+                    if race_no > 1 and len(sentinel) == before:
+                        break
+
+            _visit_pages("wpq", wp,  "WIN+PLA+QIN")   # WIN, PLA, QIN, QPL
+            _visit_pages("fct", fct, "FCT")            # FCT (二重彩)
+            _visit_pages("tri", tri, "TRITop")         # TRITop (三重彩)
 
             browser.close()
 
     except Exception as e:
         print(f"[Fetcher] Odds fetch error: {e}")
-        return {}, {}
+        return {}, {}, {}, {}
 
-    total_wp  = sum(len(v) for v in wp.values())
-    total_qin = sum(len(v) for v in qin.values())
-    print(f"[Fetcher] WIN/PLA: {len(wp)} races, {total_wp} horses  |  QIN: {len(qin)} races, {total_qin} combinations")
-    return wp, qin
+    print(
+        f"[Fetcher] WIN/PLA: {len(wp)} races, {sum(len(v) for v in wp.values())} horses"
+        f"  |  QIN: {sum(len(v) for v in qin.values())} combos"
+        f"  |  FCT: {sum(len(v) for v in fct.values())} combos"
+        f"  |  TRI: {sum(len(v) for v in tri.values())} combos"
+    )
+    return wp, qin, fct, tri
 
 
 # ------------------------------------------------------------------ #
@@ -523,8 +554,8 @@ def fetch_full_day(race_date: str = None, venue: str = None) -> dict:
 
         browser.close()
 
-    # Merge in odds (WIN/PLA per horse + QIN combinations per race)
-    wp_map, qin_map = _fetch_all_odds(race_date, venue)
+    # Merge in all odds pools (WIN/PLA per horse; QIN/FCT/TRI per race)
+    wp_map, qin_map, fct_map, tri_map = _fetch_all_odds(race_date, venue)
     if wp_map:
         for race in races_raw:
             rn = str(race["id"])
@@ -535,10 +566,11 @@ def fetch_full_day(race_date: str = None, venue: str = None) -> dict:
                 h["placeOdds"] = ho.get("place")
 
     envelope = _build_envelope(races_raw, race_date, venue)
-    if qin_map:
-        for race in envelope["races"]:
-            rn = str(race["id"])
-            race["quinella"] = qin_map.get(rn, {})
+    for race in envelope["races"]:
+        rn = str(race["id"])
+        race["quinella"] = qin_map.get(rn, {})
+        race["forecast"]  = fct_map.get(rn, {})
+        race["tierce"]    = tri_map.get(rn, {})
     return envelope
 
 
@@ -563,6 +595,8 @@ def _build_envelope(races_raw: list[dict], race_date: str, venue: str) -> dict:
             "totalRunners": len(raw.get("horses", [])),
             "horses":       raw.get("horses", []),
             "quinella":     {},
+            "forecast":     {},
+            "tierce":       {},
             "reserves":     [],
         }
         races.append(race)
