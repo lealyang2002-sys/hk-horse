@@ -492,11 +492,14 @@ def api_export():
 # ------------------------------------------------------------------ #
 def start_scheduler():
     sched = BackgroundScheduler(daemon=True)
-    # Race hours: force-fetch every 15 min to keep odds current
-    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="17-23", minute="*/15",
+    # Race hours: force-fetch every 3 min to keep odds current
+    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="17-23", minute="*/3",
                   id="race_hours_fetch", replace_existing=True)
-    # Daytime: force-fetch every 2 hours to pick up new entries / schedule changes
-    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="8,10,12,14,16", minute="0",
+    # Pre-race window: every 10 min (odds starting to appear)
+    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="16", minute="*/10",
+                  id="prerace_fetch", replace_existing=True)
+    # Daytime: every 30 min to pick up new entries / schedule changes
+    sched.add_job(lambda: _do_fetch(force=True), "cron", hour="8-15", minute="*/30",
                   id="daytime_fetch", replace_existing=True)
     sched.start()
     return sched

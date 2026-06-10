@@ -172,7 +172,7 @@ async function initRaceWithAPI(id, renderFn) {
  * Calls onUpdate() whenever the server has fetched fresh data since last check.
  * Returns a stop function: const stop = apiStartPolling(...); stop();
  */
-function apiStartPolling(onUpdate, intervalMs = 60000) {
+function apiStartPolling(onUpdate, intervalMs = 30000) {
   let lastKnown = null;
   let timer = null;
 
