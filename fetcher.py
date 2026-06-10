@@ -102,6 +102,51 @@ def _fetch_all_odds(race_date: str, venue: str) -> dict[str, dict]:
 
     result: dict[str, dict] = {}
 
+    def _extract_pools(data: dict):
+        """Pull WIN odds from a single GraphQL response into result."""
+        meetings = (data.get("data") or {}).get("raceMeetings") or []
+        for m in meetings:
+            if not m:
+                continue
+            m_date, m_venue = m.get("date"), m.get("venueCode")
+            if m_date and m_date != race_date:
+                continue
+            if m_venue and m_venue != venue:
+                continue
+            # Primary: WIN odds from pmPools → oddsNodes
+            for pool in (m.get("pmPools") or []):
+                if pool.get("oddsType") != "WIN":
+                    continue
+                race_nos = (pool.get("leg") or {}).get("races") or []
+                if not race_nos:
+                    continue
+                rn = str(race_nos[0])
+                for node in (pool.get("oddsNodes") or []):
+                    raw = node.get("combString") or ""
+                    hn = str(int(raw)) if raw.isdigit() else ""
+                    win = _float_or_none(node.get("oddsValue"))
+                    if hn and win:
+                        if rn not in result:
+                            result[rn] = {}
+                        if hn not in result[rn]:
+                            result[rn][hn] = {"win": None, "place": None}
+                        result[rn][hn]["win"] = win
+            # Fallback: winOdds on runner objects
+            for race in (m.get("races") or []):
+                rn = str(race.get("no", ""))
+                if not rn:
+                    continue
+                for runner in (race.get("runners") or []):
+                    hn = str(runner.get("no", ""))
+                    win = _float_or_none(runner.get("winOdds"))
+                    if hn and win:
+                        if rn not in result:
+                            result[rn] = {}
+                        if hn not in result[rn]:
+                            result[rn][hn] = {"win": None, "place": None}
+                        if result[rn][hn]["win"] is None:
+                            result[rn][hn]["win"] = win
+
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True, args=["--no-sandbox"])
@@ -112,36 +157,27 @@ def _fetch_all_odds(race_date: str, venue: str) -> dict[str, dict]:
             page = ctx.new_page()
 
             def on_response(response):
-                if "graphql" not in response.url:
+                if "info.cld.hkjc.com/graphql" not in response.url:
                     return
                 try:
-                    data = response.json()
-                    meetings = (data.get("data") or {}).get("raceMeetings") or []
-                    for m in meetings:
-                        if not m:
-                            continue
-                        if m.get("date") != race_date or m.get("venueCode") != venue:
-                            continue
-                        for race in m.get("races") or []:
-                            rn = str(race.get("no", ""))
-                            if not rn:
-                                continue
-                            horses: dict[str, dict] = {}
-                            for runner in race.get("runners") or []:
-                                hn = str(runner.get("no", ""))
-                                win = _float_or_none(runner.get("winOdds"))
-                                if hn and win:
-                                    horses[hn] = {"win": win, "place": None}
-                            if horses:
-                                result[rn] = horses
+                    _extract_pools(response.json())
                 except Exception:
                     pass
 
             page.on("response", on_response)
-            url = f"https://bet.hkjc.com/en/racing/odds_wp/{race_date}/{venue}/1"
-            print(f"[Fetcher] Fetching odds from {url}")
-            page.goto(url, wait_until="networkidle", timeout=60000)
-            page.wait_for_timeout(3000)
+
+            # Each race tab loads its own pmPools — visit all races in sequence
+            for race_no in range(1, 15):
+                url = f"https://bet.hkjc.com/en/racing/wp/{race_date}/{venue}/{race_no}"
+                if race_no == 1:
+                    print(f"[Fetcher] Fetching odds from {url} (and subsequent races)")
+                before = len(result)
+                page.goto(url, wait_until="networkidle", timeout=30000)
+                page.wait_for_timeout(1500)
+                # Stop when a race yields no new data (meeting has fewer races)
+                if race_no > 1 and len(result) == before:
+                    break
+
             browser.close()
 
     except Exception as e:
