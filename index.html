@@ -298,6 +298,12 @@
   apiGetRaces().then(races => {
     if (!races || races.length === 0) pollUntilReady();
   });
+
+  // Auto-refresh: re-render when server fetches new data
+  apiStartPolling(async () => {
+    const [meta, races] = await Promise.all([apiGetRaceDay(), apiGetRaces()]);
+    renderDashboard(meta, races);
+  });
 </script>
 <script src="js/voice-widget.js"></script>
 </body>

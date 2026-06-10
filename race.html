@@ -462,6 +462,7 @@
     renderRace(currentRaceId);
   }
   boot();
+  apiStartPolling(() => renderRace(currentRaceId));
 </script>
 <script src="js/voice-widget.js"></script>
 </body>

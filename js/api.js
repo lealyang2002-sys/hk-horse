@@ -166,3 +166,32 @@ async function initRaceWithAPI(id, renderFn) {
     if (fallback) renderFn(fallback);
   }
 }
+
+/**
+ * Start background polling. Checks /api/status every `intervalMs` (default 60s).
+ * Calls onUpdate() whenever the server has fetched fresh data since last check.
+ * Returns a stop function: const stop = apiStartPolling(...); stop();
+ */
+function apiStartPolling(onUpdate, intervalMs = 60000) {
+  let lastKnown = null;
+  let timer = null;
+
+  async function poll() {
+    try {
+      const status = await _apiFetch('/api/status');
+      const ts = status.lastFetch;
+      if (ts && ts !== lastKnown) {
+        if (lastKnown !== null && !status.fetching) {
+          // New data arrived — clear client cache and notify page
+          Object.keys(_cache).forEach(k => delete _cache[k]);
+          onUpdate();
+        }
+        lastKnown = ts;
+      }
+    } catch (_) { /* network blip — ignore, will retry */ }
+  }
+
+  poll(); // immediate first check to seed lastKnown
+  timer = setInterval(poll, intervalMs);
+  return () => clearInterval(timer);
+}
